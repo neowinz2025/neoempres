@@ -20,6 +20,8 @@ export default function NovoEmprestimoPage() {
   const [tipo, setTipo] = useState<'PRICE' | 'SIMPLE' | 'BULLET'>('PRICE')
   const [numParcelas, setNumParcelas] = useState('12')
   const [frequencia, setFrequencia] = useState<'DIARIO' | 'SEMANAL' | 'MENSAL'>('MENSAL')
+  const [multa, setMulta] = useState('2.0')
+  const [juros, setJuros] = useState('0.033')
   const [modoEntrada, setModoEntrada] = useState<'TAXA' | 'PARCELA'>('TAXA')
   const [valorParcelaInput, setValorParcelaInput] = useState('')
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
@@ -103,7 +105,8 @@ export default function NovoEmprestimoPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clienteId, valor: parseFloat(valor), taxaJuros: parseFloat(taxaAEnviar.toFixed(4)),
-        tipo, numParcelas: parseInt(numParcelas), dataInicio, frequencia
+        tipo, numParcelas: parseInt(numParcelas), dataInicio, frequencia,
+        multaPercent: parseFloat(multa), jurosDiario: parseFloat(juros)
       }),
     })
     if (res.ok) {
@@ -158,7 +161,7 @@ export default function NovoEmprestimoPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">Tipo</label>
               <select value={tipo} onChange={(e) => setTipo(e.target.value as 'PRICE' | 'SIMPLE' | 'BULLET')} className="select-field">
@@ -171,6 +174,14 @@ export default function NovoEmprestimoPage() {
               <label className="block text-sm font-medium text-text-secondary mb-1">Parcelas</label>
               <input type="number" value={numParcelas} onChange={(e) => setNumParcelas(e.target.value)} className="input-field" placeholder="12" min="1" max="120" required />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Frequência</label>
+              <select value={frequencia} onChange={(e) => setFrequencia(e.target.value as 'DIARIO' | 'SEMANAL' | 'MENSAL')} className="select-field">
+                <option value="MENSAL">Mensal</option>
+                <option value="SEMANAL">Semanal</option>
+                <option value="DIARIO">Diário</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -179,12 +190,12 @@ export default function NovoEmprestimoPage() {
               <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="input-field" required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Frequência</label>
-              <select value={frequencia} onChange={(e) => setFrequencia(e.target.value as 'DIARIO' | 'SEMANAL' | 'MENSAL')} className="select-field">
-                <option value="MENSAL">Mensal</option>
-                <option value="SEMANAL">Semanal</option>
-                <option value="DIARIO">Diário</option>
-              </select>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Multa Atraso (%)</label>
+              <input type="number" value={multa} onChange={(e) => setMulta(e.target.value)} className="input-field" step="0.01" min="0" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Juros Atraso (% a.d.)</label>
+              <input type="number" value={juros} onChange={(e) => setJuros(e.target.value)} className="input-field" step="0.001" min="0" required />
             </div>
           </div>
         </div>
