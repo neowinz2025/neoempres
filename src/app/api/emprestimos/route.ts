@@ -1,0 +1,107 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getSession } from '@/lib/auth'
+import { calcSimulacao } from '@/lib/calculations'
+
+export async function GET(request: NextRequest) {
+  const session = await getSession()
+  if (!session) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
+  const { searchParams } = new URL(request.url)
+  const status = searchParams.get('status')
+  const clienteId = searchParams.get('clienteId')
+  const page = parseInt(searchParams.get('page') || '1')
+  const limit = parseInt(searchParams.get('limit') || '20')
+  const skip = (page - 1) * limit
+
+  const where: Record<string, unknown> = {}
+  if (status) where.status = status
+  if (clienteId) where.clienteId = clienteId
+
+  const [emprestimos, total] = await Promise.all([
+    prisma.emprestimo.findMany({
+      where,
+      include: {
+        cliente: { select: { id: true, nome: true, telefone: true, score: true } },
+        parcelas: { orderBy: { numero: 'asc' } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.emprestimo.count({ where }),
+  ])
+
+  return NextResponse.json({
+    data: emprestimos,
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  })
+}
+
+export async function POST(request: NextRequest) {
+  const session = await getSession()
+  if (!session) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
+  try {
+    const body = await request.json()
+    const { clienteId, valor, taxaJuros, tipo, numParcelas, dataInicio, multaPercent, jurosDiario } = body
+
+    if (!clienteId || !valor || !taxaJuros || !tipo || !numParcelas) {
+      return NextResponse.json(
+        { error: 'Campos obrigatórios: clienteId, valor, taxaJuros, tipo, numParcelas' },
+        { status: 400 }
+      )
+    }
+
+    const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } })
+    if (!cliente) {
+      return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
+    }
+
+    const inicio = dataInicio ? new Date(dataInicio) : new Date()
+    const simulacao = calcSimulacao(tipo, valor, taxaJuros, numParcelas, inicio)
+
+    const emprestimo = await prisma.emprestimo.create({
+      data: {
+        clienteId,
+        valor,
+        taxaJuros,
+        tipo,
+        numParcelas,
+        valorParcela: simulacao.valorParcela,
+        saldoDevedor: simulacao.totalPago,
+        multaPercent: multaPercent || 2.0,
+        jurosDiario: jurosDiario || 0.033,
+        parcelas: {
+          create: simulacao.parcelas.map((p) => ({
+            numero: p.numero,
+            valor: p.valor,
+            valorOriginal: p.valor,
+            vencimento: p.vencimento,
+          })),
+        },
+      },
+      include: {
+        parcelas: { orderBy: { numero: 'asc' } },
+        cliente: true,
+      },
+    })
+
+    await prisma.log.create({
+      data: {
+        userId: session.userId,
+        acao: 'CRIAR_EMPRESTIMO',
+        detalhes: `Empréstimo de R$ ${valor} criado para ${cliente.nome}`,
+      },
+    })
+
+    return NextResponse.json({ data: emprestimo }, { status: 201 })
+  } catch (error) {
+    console.error('Error creating loan:', error)
+    return NextResponse.json({ error: 'Erro ao criar empréstimo' }, { status: 500 })
+  }
+}

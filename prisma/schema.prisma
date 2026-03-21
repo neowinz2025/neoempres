@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  OPERATOR
+  FINANCIAL
+}
+
+enum Score {
+  A
+  B
+  C
+  D
+}
+
+enum TipoEmprestimo {
+  PRICE
+  SIMPLE
+  BULLET
+}
+
+enum StatusEmprestimo {
+  ATIVO
+  QUITADO
+  RENEGOCIADO
+  INADIMPLENTE
+}
+
+enum StatusParcela {
+  PENDENTE
+  PAGO
+  ATRASADO
+  PARCIAL
+}
+
+enum CanalNotificacao {
+  WHATSAPP
+  TELEGRAM
+  EMAIL
+}
+
+enum StatusNotificacao {
+  PENDENTE
+  ENVIADA
+  FALHA
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(OPERATOR)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  logs      Log[]
+
+  @@map("users")
+}
+
+model Cliente {
+  id          String       @id @default(cuid())
+  nome        String
+  telefone    String
+  score       Score        @default(C)
+  token       String       @unique @default(cuid())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  emprestimos Emprestimo[]
+
+  @@map("clientes")
+}
+
+model Emprestimo {
+  id            String            @id @default(cuid())
+  clienteId     String
+  cliente       Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  valor         Float
+  taxaJuros     Float
+  tipo          TipoEmprestimo
+  numParcelas   Int
+  valorParcela  Float
+  saldoDevedor  Float
+  multaPercent  Float             @default(2.0)
+  jurosDiario   Float             @default(0.033)
+  status        StatusEmprestimo  @default(ATIVO)
+  token         String            @unique @default(cuid())
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  parcelas      Parcela[]
+
+  @@map("emprestimos")
+}
+
+model Parcela {
+  id             String          @id @default(cuid())
+  emprestimoId   String
+  emprestimo     Emprestimo      @relation(fields: [emprestimoId], references: [id], onDelete: Cascade)
+  numero         Int
+  valor          Float
+  valorOriginal  Float
+  multa          Float           @default(0)
+  jurosAtraso    Float           @default(0)
+  vencimento     DateTime
+  status         StatusParcela   @default(PENDENTE)
+  pixTxId        String?
+  dataPagamento  DateTime?
+  valorPago      Float?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  notificacoes   Notificacao[]
+
+  @@map("parcelas")
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  acao      String
+  detalhes  String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@map("logs")
+}
+
+model Config {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+
+  @@map("configs")
+}
+
+model Notificacao {
+  id        String            @id @default(cuid())
+  parcelaId String
+  parcela   Parcela           @relation(fields: [parcelaId], references: [id], onDelete: Cascade)
+  tipo      String
+  canal     CanalNotificacao
+  status    StatusNotificacao @default(PENDENTE)
+  mensagem  String?
+  enviadaEm DateTime?
+  createdAt DateTime          @default(now())
+
+  @@map("notificacoes")
+}
