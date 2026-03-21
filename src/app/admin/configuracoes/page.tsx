@@ -204,10 +204,14 @@ export default function ConfiguracoesPage() {
               <input type="password" value={configs['ZAPI_TOKEN'] || ''} onChange={(e) => handleChange('ZAPI_TOKEN', e.target.value)} className="input-field" placeholder="Seu token auth..." />
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">Telegram Bot Token</label>
               <input type="password" value={configs['TELEGRAM_BOT_TOKEN'] || ''} onChange={(e) => handleChange('TELEGRAM_BOT_TOKEN', e.target.value)} className="input-field" placeholder="Token do BotFather..." />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Telegram Chat ID (Seu ID ou do Grupo)</label>
+              <input type="text" value={configs['TELEGRAM_CHAT_ID'] || ''} onChange={(e) => handleChange('TELEGRAM_CHAT_ID', e.target.value)} className="input-field" placeholder="Ex: 123456789" />
             </div>
           </div>
         </div>

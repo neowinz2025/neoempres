@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import CryptoJS from 'crypto-js'
+import { sendTelegram } from '@/lib/notifications/telegram'
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,6 +92,8 @@ export async function POST(request: NextRequest) {
             detalhes: `Pagamento PIX confirmado - Parcela #${parcela.numero} - TxID: ${txId} - R$ ${paid}`,
           },
         })
+
+        await sendTelegram(`💰 <b>Novo Pagamento PIX!</b>\n\n<b>Parcela:</b> #${parcela.numero}\n<b>Valor Pago:</b> R$ ${paid.toFixed(2)}\n<b>Via:</b> Webhook Automático\n\n<pre>TxID: ${txId}</pre>`)
 
         console.log(`[Webhook] Payment confirmed for parcela ${parcela.id}`)
       }

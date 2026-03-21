@@ -1,11 +1,14 @@
-export async function sendTelegram(
-  chatId: string,
-  mensagem: string
-): Promise<boolean> {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN
+import { prisma } from '@/lib/prisma'
 
-  if (!botToken) {
-    console.warn('[Telegram] Bot token not configured')
+export async function sendTelegram(mensagem: string, chatIdOverride?: string): Promise<boolean> {
+  const botConf = await prisma.config.findUnique({ where: { key: 'TELEGRAM_BOT_TOKEN' } })
+  const botToken = botConf?.value || process.env.TELEGRAM_BOT_TOKEN
+
+  const chatConf = await prisma.config.findUnique({ where: { key: 'TELEGRAM_CHAT_ID' } })
+  const chatId = chatIdOverride || chatConf?.value || process.env.TELEGRAM_CHAT_ID
+
+  if (!botToken || !chatId) {
+    console.warn('[Telegram] Token ou ChatID ausente no banco/env')
     return false
   }
 

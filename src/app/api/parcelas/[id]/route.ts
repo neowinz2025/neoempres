@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { sendTelegram } from '@/lib/notifications/telegram'
 
 export async function PUT(
   request: NextRequest,
@@ -92,6 +93,12 @@ export async function PUT(
         detalhes: `Parcela #${parcela.numero} do empréstimo ${parcela.emprestimoId} atualizada para ${status}`,
       },
     })
+    
+    if (status === 'PAGO' || status === 'PARCIAL') {
+      await sendTelegram(
+        `💵 <b>Pagamento Manual Registrado</b>\n\n<b>Parcela:</b> #${parcela.numero}\n<b>Valor Pago Orig./Atual:</b> R$ ${parcela.valor.toFixed(2)} / R$ ${Number(valorPago || parcela.valorPago || parcela.valor).toFixed(2)}\n<b>Status Atual:</b> ${status === 'PARCIAL' ? 'Parcial' : 'Pago'}\n<b>Via:</b> ${formaPagamento || 'Painel Admin'}`
+      )
+    }
 
     return NextResponse.json({ data: updated })
   } catch (error) {
