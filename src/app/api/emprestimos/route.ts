@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { clienteId, valor, taxaJuros, tipo, numParcelas, dataInicio, multaPercent, jurosDiario } = body
 
-    if (!clienteId || !valor || !taxaJuros || !tipo || !numParcelas) {
+    if (!clienteId || !valor || taxaJuros === undefined || !tipo || !numParcelas) {
       return NextResponse.json(
         { error: 'Campos obrigatórios: clienteId, valor, taxaJuros, tipo, numParcelas' },
         { status: 400 }

@@ -1,20 +1,22 @@
 import { PixProvider, PixChargeResult, PixStatusResult } from './provider'
+import { prisma } from '@/lib/prisma'
 
 export class FastDePixProvider implements PixProvider {
   name = 'FastDePix'
   private baseUrl = 'https://fastdepix.space/api/v1'
-  private apiKey: string
 
-  constructor() {
-    this.apiKey = process.env.FASTDEPIX_API_KEY || ''
+  private async getApiKey(): Promise<string> {
+    const config = await prisma.config.findUnique({ where: { key: 'FASTDEPIX_API_KEY' } })
+    return config?.value || process.env.FASTDEPIX_API_KEY || ''
   }
 
   private async request(method: string, path: string, body?: Record<string, unknown>) {
+    const apiKey = await this.getApiKey()
     const res = await fetch(`${this.baseUrl}${path}`, {
       method,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: body ? JSON.stringify(body) : undefined,
     })

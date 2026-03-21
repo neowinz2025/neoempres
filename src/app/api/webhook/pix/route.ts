@@ -8,7 +8,8 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('X-Webhook-Signature') || ''
 
     // Validate HMAC signature
-    const secret = process.env.FASTDEPIX_WEBHOOK_SECRET || ''
+    const config = await prisma.config.findUnique({ where: { key: 'FASTDEPIX_WEBHOOK_SECRET' } })
+    const secret = config?.value || process.env.FASTDEPIX_WEBHOOK_SECRET || ''
     if (secret) {
       const expectedSignature = CryptoJS.HmacSHA256(body, secret).toString()
       if (signature !== expectedSignature) {
