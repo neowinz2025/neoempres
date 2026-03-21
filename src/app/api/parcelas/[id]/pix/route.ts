@@ -67,7 +67,7 @@ export async function POST(
   } catch (error) {
     console.error('Error creating PIX charge:', error)
     return NextResponse.json(
-      { error: 'Erro ao gerar cobrança PIX' },
+      { error: error instanceof Error ? error.message : 'Erro ao gerar cobrança PIX' },
       { status: 500 }
     )
   }

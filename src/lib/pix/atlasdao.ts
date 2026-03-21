@@ -25,7 +25,8 @@ export class AtlasDaoProvider implements PixProvider {
 
     const data = await res.json()
     if (!res.ok) {
-      throw new Error(data.message || `AtlasDao API error: ${res.status}`)
+      console.error('[AtlasDao Error]', data)
+      throw new Error(data.message || (data.errors ? JSON.stringify(data.errors) : JSON.stringify(data)) || `AtlasDao API error: ${res.status}`)
     }
     return data
   }
@@ -36,7 +37,6 @@ export class AtlasDaoProvider implements PixProvider {
       body.description = description
     }
     
-    body.taxNumber = '00000000000'
     body.merchantOrderId = `ORDER-${Math.random().toString(36).substring(7)}`
 
     const walletConf = await prisma.config.findUnique({ where: { key: 'ATLASDAO_WALLET_ADDRESS' } })
@@ -51,7 +51,7 @@ export class AtlasDaoProvider implements PixProvider {
     if (webhookUrlConf?.value && webhookSecretConf?.value) {
       body.webhook = {
         url: webhookUrlConf.value,
-        events: ['transaction.created', 'transaction.paid', 'payment.completed'],
+        events: ['transaction.created', 'transaction.paid'],
         secret: webhookSecretConf.value
       }
     }
