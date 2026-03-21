@@ -6,6 +6,10 @@ export default function ConfiguracoesPage() {
   const [configs, setConfigs] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  
+  // Senha states
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
   useEffect(() => {
     fetch('/api/configs')
@@ -19,15 +23,52 @@ export default function ConfiguracoesPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    const res = await fetch('/api/configs', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(configs)
-    })
-    
+
+    try {
+      const res = await fetch('/api/configs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ configs }),
+      })
+      if (!res.ok) throw new Error('Erro ao salvar as configurações.')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro genérico ao salvar configs')
+      setSaving(false)
+      return
+    }
+
+    if (newPassword || confirmPassword) {
+      if (newPassword !== confirmPassword) {
+        alert('As senhas não coincidem!')
+        setSaving(false)
+        return
+      }
+      if (newPassword.length < 6) {
+        alert('A senha deve ter no mínimo 6 caracteres!')
+        setSaving(false)
+        return
+      }
+
+      try {
+        const resPass = await fetch('/api/auth/password', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newPassword }),
+        })
+        const data = await resPass.json()
+        if (!resPass.ok) throw new Error(data.error || 'Erro ao alterar a senha')
+        
+        setNewPassword('')
+        setConfirmPassword('')
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Erro ao trocar senha')
+        setSaving(false)
+        return
+      }
+    }
+
     setSaving(false)
-    if (res.ok) alert('Configurações salvas com sucesso!')
-    else alert('Erro ao salvar as configurações. Verifique se você é administrador.')
+    alert('Configurações aplicadas com sucesso!')
   }
 
   const handleChange = (key: string, value: string) => {
@@ -80,6 +121,26 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Alterar Senha de Acesso */}
+        <div className="glass-card p-5 space-y-4">
+          <h2 className="font-semibold text-accent uppercase tracking-wide text-sm flex items-center gap-2">
+            <span>🔒</span> Segurança e Acesso
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Nova Senha</label>
+              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="input-field" placeholder="Nova senha de administrador" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Confirmar Senha</label>
+              <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="input-field" placeholder="Repita a mesma senha" />
+            </div>
+          </div>
+          <p className="text-xs text-text-muted mt-2">
+            Deixe os campos em branco se não desejar alterar a senha atual.
+          </p>
         </div>
 
         {/* Financeiro */}
