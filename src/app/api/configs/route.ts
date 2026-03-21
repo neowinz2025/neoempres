@@ -24,8 +24,10 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json()
+    const configData = body.configs || body
     const updates = []
-    for (const [key, value] of Object.entries(body)) {
+    
+    for (const [key, value] of Object.entries(configData)) {
       if (typeof value === 'string') {
         updates.push(
           prisma.config.upsert({
