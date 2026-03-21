@@ -6,6 +6,7 @@ export default function ConfiguracoesPage() {
   const [configs, setConfigs] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [testingBot, setTestingBot] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
   
@@ -215,18 +216,33 @@ export default function ConfiguracoesPage() {
                   <input type="text" value={configs['TELEGRAM_CHAT_ID'] || ''} onChange={(e) => handleChange('TELEGRAM_CHAT_ID', e.target.value)} className="input-field flex-1" placeholder="Ex: 123456789" />
                   <button
                     type="button"
+                    disabled={testingBot}
                     onClick={async () => {
-                      const res = await fetch('/api/telegram/test', { method: 'POST' })
-                      if (res.ok) {
-                        showToast('Mensagem enviada com sucesso! Verifique seu Telegram.', 'success')
-                      } else {
-                        const errData = await res.json()
-                        showToast(`Telegram respondeu: ${errData.error || 'Desconhecido'}`, 'error')
+                      setTestingBot(true)
+                      try {
+                        const res = await fetch('/api/telegram/test', { 
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            botToken: configs['TELEGRAM_BOT_TOKEN'],
+                            chatId: configs['TELEGRAM_CHAT_ID']
+                          })
+                        })
+                        if (res.ok) {
+                          showToast('Mensagem enviada com sucesso! Verifique seu Telegram.', 'success')
+                        } else {
+                          const errData = await res.json().catch(() => ({ error: 'Resposta inválida do servidor.' }))
+                          showToast(`Telegram negou o envio: ${errData.error || 'Erro Desconhecido'}`, 'error')
+                        }
+                      } catch (err) {
+                        showToast('Erro de rede: Falha na conexão.', 'error')
+                      } finally {
+                        setTestingBot(false)
                       }
                     }}
                     className="btn-secondary px-4 text-xs font-semibold whitespace-nowrap"
                   >
-                    Testar Bot
+                    {testingBot ? 'Enviando...' : 'Testar Bot'}
                   </button>
                 </div>
                 <p className="text-[10px] text-text-muted mt-1 leading-tight border-l-2 border-accent/50 pl-2">
