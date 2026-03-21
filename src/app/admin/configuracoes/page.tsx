@@ -64,16 +64,36 @@ export default function ConfiguracoesPage() {
         {/* PIX */}
         <div className="glass-card p-5 space-y-4">
           <h2 className="font-semibold text-accent uppercase tracking-wide text-sm flex items-center gap-2">
-            <span>⚡</span> Integração PIX (FastDePix)
+            <span>⚡</span> Integração PIX (Geral)
           </h2>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-4 border-b border-border pb-4 mb-4" style={{ borderColor: 'var(--color-border)' }}>
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">API Key</label>
-              <input type="password" value={configs['FASTDEPIX_API_KEY'] || ''} onChange={(e) => handleChange('FASTDEPIX_API_KEY', e.target.value)} className="input-field" placeholder="Sua chave da API..." />
+              <label className="block text-sm font-medium text-text-secondary mb-1">URL Pública do Seu Sistema (Para Webhooks)</label>
+              <input type="url" value={configs['APP_WEBHOOK_URL'] || ''} onChange={(e) => handleChange('APP_WEBHOOK_URL', e.target.value)} className="input-field" placeholder="https://seu-sistema.vercel.app/api/webhook/pix" />
+            </div>
+          </div>
+
+          <h3 className="font-semibold text-text-primary text-sm mt-4">FastDePix (Principal)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-border pb-4 mb-4" style={{ borderColor: 'var(--color-border)' }}>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">API Key (FastDePix)</label>
+              <input type="password" value={configs['FASTDEPIX_API_KEY'] || ''} onChange={(e) => handleChange('FASTDEPIX_API_KEY', e.target.value)} className="input-field" placeholder="Sua chave..." />
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Webhook Secret (Assinatura)</label>
-              <input type="password" value={configs['FASTDEPIX_WEBHOOK_SECRET'] || ''} onChange={(e) => handleChange('FASTDEPIX_WEBHOOK_SECRET', e.target.value)} className="input-field" placeholder="Segredo para validar os webhooks..." />
+              <label className="block text-sm font-medium text-text-secondary mb-1">Webhook Secret (FastDePix)</label>
+              <input type="password" value={configs['FASTDEPIX_WEBHOOK_SECRET'] || ''} onChange={(e) => handleChange('FASTDEPIX_WEBHOOK_SECRET', e.target.value)} className="input-field" placeholder="Segredo..." />
+            </div>
+          </div>
+
+          <h3 className="font-semibold text-text-primary text-sm mt-4">AtlasDao (Fallback Secundário)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">API Key (AtlasDao)</label>
+              <input type="password" value={configs['ATLASDAO_API_KEY'] || ''} onChange={(e) => handleChange('ATLASDAO_API_KEY', e.target.value)} className="input-field" placeholder="Sua chave..." />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Webhook Secret (AtlasDao)</label>
+              <input type="password" value={configs['ATLASDAO_WEBHOOK_SECRET'] || ''} onChange={(e) => handleChange('ATLASDAO_WEBHOOK_SECRET', e.target.value)} className="input-field" placeholder="Segredo HMAC..." />
             </div>
           </div>
         </div>

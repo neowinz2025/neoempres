@@ -5,17 +5,34 @@ import CryptoJS from 'crypto-js'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
-    const signature = request.headers.get('X-Webhook-Signature') || ''
+    const fdSignature = request.headers.get('X-Webhook-Signature')
+    const atlasSignature = request.headers.get('X-Atlas-Signature')
+    
+    let isValid = false
 
-    // Validate HMAC signature
-    const config = await prisma.config.findUnique({ where: { key: 'FASTDEPIX_WEBHOOK_SECRET' } })
-    const secret = config?.value || process.env.FASTDEPIX_WEBHOOK_SECRET || ''
-    if (secret) {
-      const expectedSignature = CryptoJS.HmacSHA256(body, secret).toString()
-      if (signature !== expectedSignature) {
-        console.error('[Webhook] Invalid signature')
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+    if (atlasSignature) {
+      const config = await prisma.config.findUnique({ where: { key: 'ATLASDAO_WEBHOOK_SECRET' } })
+      const secret = config?.value || process.env.ATLASDAO_WEBHOOK_SECRET || ''
+      if (secret) {
+        const expectedSignature = 'sha256=' + CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)
+        if (atlasSignature === expectedSignature || atlasSignature === CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)) {
+          isValid = true
+        }
       }
+    } else if (fdSignature) {
+      const config = await prisma.config.findUnique({ where: { key: 'FASTDEPIX_WEBHOOK_SECRET' } })
+      const secret = config?.value || process.env.FASTDEPIX_WEBHOOK_SECRET || ''
+      if (secret) {
+        const expectedSignature = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)
+        if (fdSignature === expectedSignature) {
+          isValid = true
+        }
+      }
+    }
+
+    if (!isValid && (fdSignature || atlasSignature)) {
+      console.error('[Webhook] Invalid signature')
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
     const data = JSON.parse(body)
@@ -23,9 +40,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Webhook] Received event: ${event}`)
 
-    if (event === 'transaction.paid') {
-      const txId = String(data.data?.id || data.data?.transaction_id)
-      const amount = data.data?.amount
+    if (event === 'transaction.paid' || event === 'payment.completed') {
+      const txId = String(data.data?.id || data.data?.transaction_id || data.id)
+      const amount = data.data?.amount || data.amount
 
       // Find parcela by pixTxId
       const parcela = await prisma.parcela.findFirst({
