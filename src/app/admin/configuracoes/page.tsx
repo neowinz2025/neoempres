@@ -88,7 +88,7 @@ export default function ConfiguracoesPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-in relative">
       {toastMsg && (
-        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl animate-in slide-in-from-bottom-5 border text-white ${toastType === 'success' ? 'bg-[#1a1b26] border-accent' : 'bg-red-900/90 border-red-500'}`}>
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-[9999] px-4 py-3 rounded-xl shadow-2xl animate-in fade-in slide-in-from-top-5 border text-white text-sm text-center ${toastType === 'success' ? 'bg-[#1a1b26] border-accent' : 'bg-red-900/95 border-red-500'}`}>
           {toastMsg}
         </div>
       )}
@@ -210,23 +210,28 @@ export default function ConfiguracoesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">Telegram Chat ID (Seu ID ou do Grupo)</label>
-              <div className="flex gap-2">
-                <input type="text" value={configs['TELEGRAM_CHAT_ID'] || ''} onChange={(e) => handleChange('TELEGRAM_CHAT_ID', e.target.value)} className="input-field flex-1" placeholder="Ex: 123456789" />
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const res = await fetch('/api/telegram/test', { method: 'POST' })
-                    if (res.ok) {
-                      showToast('Mensagem enviada com sucesso! Verifique seu Telegram.', 'success')
-                    } else {
-                      const errData = await res.json()
-                      showToast(`Erro na integração. Telegram respondeu: ${errData.error || 'Desconhecido'}`, 'error')
-                    }
-                  }}
-                  className="btn-secondary px-4 text-xs font-semibold whitespace-nowrap"
-                >
-                  Testar Bot
-                </button>
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <input type="text" value={configs['TELEGRAM_CHAT_ID'] || ''} onChange={(e) => handleChange('TELEGRAM_CHAT_ID', e.target.value)} className="input-field flex-1" placeholder="Ex: 123456789" />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const res = await fetch('/api/telegram/test', { method: 'POST' })
+                      if (res.ok) {
+                        showToast('Mensagem enviada com sucesso! Verifique seu Telegram.', 'success')
+                      } else {
+                        const errData = await res.json()
+                        showToast(`Telegram respondeu: ${errData.error || 'Desconhecido'}`, 'error')
+                      }
+                    }}
+                    className="btn-secondary px-4 text-xs font-semibold whitespace-nowrap"
+                  >
+                    Testar Bot
+                  </button>
+                </div>
+                <p className="text-[10px] text-text-muted mt-1 leading-tight border-l-2 border-accent/50 pl-2">
+                  <strong>IMPORTANTE:</strong> O Telegram bloqueia mensagens de Bots até que você inicie uma conversa com eles. Procure pelo seu Bot no aplicativo do Telegram e envie <strong>/start</strong> ou um "Oi" antes de testar a notificação!
+                </p>
               </div>
             </div>
           </div>
