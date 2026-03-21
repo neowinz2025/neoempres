@@ -58,7 +58,9 @@ export default function NovoEmprestimoPage() {
       })
     } else {
       const pmt = parseFloat(valorParcelaInput)
-      if (!pmt || pmt * n <= v) { setSimulacao(null); return }
+      if (!pmt) { setSimulacao(null); return }
+      if (tipo === 'BULLET' && pmt < v) { setSimulacao(null); return }
+      if (tipo !== 'BULLET' && pmt * n < v) { setSimulacao(null); return }
       
       let i = 0;
       if (tipo === 'SIMPLE') {
@@ -78,9 +80,9 @@ export default function NovoEmprestimoPage() {
       
       const t = i * 100;
       setSimulacao({
-        valorParcela: Math.round(pmt * 100) / 100,
-        totalPago: Math.round(pmt * n * 100) / 100,
-        totalJuros: Math.round((pmt * n - v) * 100) / 100,
+        valorParcela: Math.round(tipo === 'BULLET' ? pmt : pmt * 100) / 100,
+        totalPago: Math.round(tipo === 'BULLET' ? pmt * 100 : pmt * n * 100) / 100,
+        totalJuros: Math.round(tipo === 'BULLET' ? (pmt - v) * 100 : (pmt * n - v) * 100) / 100,
         taxaCalculada: t
       })
     }
@@ -145,7 +147,9 @@ export default function NovoEmprestimoPage() {
               </div>
             ) : (
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">Valor da Parcela (R$)</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  {tipo === 'BULLET' ? 'Valor Final a Pagar (R$)' : 'Valor da Parcela (R$)'}
+                </label>
                 <input type="number" value={valorParcelaInput} onChange={(e) => setValorParcelaInput(e.target.value)} className="input-field" placeholder="0.00" step="0.01" min="0.1" required />
               </div>
             )}
