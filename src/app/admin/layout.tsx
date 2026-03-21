@@ -68,80 +68,75 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-[260px] flex flex-col transition-transform duration-300 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-        style={{ background: 'var(--color-bg-secondary)', borderRight: '1px solid var(--color-border)' }}
+        } bg-white`}
+        style={{ borderRight: '1px solid var(--color-border)' }}
       >
-        {/* Logo */}
-        <div className="p-5 flex items-center gap-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/5 p-1">
-            <img src="/api/icon" alt="Logo" className="w-full h-full object-contain rounded-lg drop-shadow-sm" />
-          </div>
-          <div>
-            <h1 className="font-bold text-lg text-text-primary">LoanPro</h1>
-            <p className="text-xs text-text-muted">Gestão Financeira</p>
-          </div>
+        {/* Logo / Header */}
+        <div className="p-6 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
+          <h1 className="font-extrabold text-[#1e293b] text-[17px] tracking-tight">Gestão de Empréstimos</h1>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-text-muted hover:text-text-primary">
+            ✕
+          </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                isActive(item.href)
-                  ? 'text-white'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-card'
-              }`}
-              style={isActive(item.href) ? { background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.1))', color: '#818cf8' } : {}}
-            >
-              <span className="text-lg">{item.icon}</span>
-              {item.label}
-              {isActive(item.href) && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: '#818cf8' }} />
-              )}
-            </Link>
-          ))}
+        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+          {navItems.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[14px] font-semibold transition-all duration-200 ${
+                  active
+                    ? 'bg-[#ecfdf5] text-[#059669]'
+                    : 'text-[#475569] hover:bg-slate-50 hover:text-[#1e293b]'
+                }`}
+              >
+                <span className={`text-xl ${active ? 'text-[#10b981]' : 'text-[#64748b] grayscale opacity-70'}`}>{item.icon}</span>
+                {item.label}
+              </Link>
+            )
+          })}
         </nav>
 
-        {/* User */}
+        {/* Exit Button at Bottom */}
         <div className="p-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-full gradient-bg flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-              {user.name.charAt(0)}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-medium text-text-primary truncate">{user.name}</p>
-              <p className="text-xs text-text-muted truncate">{user.role}</p>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="btn-secondary w-full justify-center text-xs py-2">
+          <button 
+            onClick={handleLogout} 
+            className="flex items-center gap-3 w-full px-4 py-3 text-[#ef4444] hover:bg-red-50 rounded-xl transition-colors font-semibold text-sm"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
             Sair
           </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 min-w-0">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-4 lg:px-6 h-14" style={{ background: 'rgba(10,14,26,0.8)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border)' }}>
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-card"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18" /></svg>
-          </button>
-
-          <div className="hidden lg:flex items-center gap-2 text-sm text-text-muted">
-            {navItems.find((i) => isActive(i.href))?.icon}{' '}
-            {navItems.find((i) => isActive(i.href))?.label || 'LoanPro'}
+      <main className="flex-1 min-w-0 bg-[#f8fafc]">
+        {/* Top bar (Mobile toggle only mostly) */}
+        <header className="sticky top-0 z-30 flex items-center justify-between px-4 h-16 bg-white lg:hidden border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 -ml-2 rounded-lg text-slate-600 hover:bg-slate-100"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18" /></svg>
+            </button>
+            <span className="font-bold text-slate-800">
+              {navItems.find((i) => isActive(i.href))?.label || 'Gestão'}
+            </span>
           </div>
-
-          <div className="flex items-center gap-2">
-            <span className="badge badge-accent text-xs">{user.role}</span>
+          
+          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-sm font-bold">
+            {user.name.charAt(0).toUpperCase()}
           </div>
         </header>
 

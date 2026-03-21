@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-primary: #0a0e1a;
-  --color-bg-secondary: #111827;
-  --color-bg-card: #1a1f36;
-  --color-bg-card-hover: #222847;
-  --color-bg-input: #1e2337;
-  --color-border: #2a3050;
-  --color-border-focus: #6366f1;
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
-  --color-accent: #6366f1;
-  --color-accent-hover: #818cf8;
-  --color-accent-light: rgba(99, 102, 241, 0.15);
+  --color-bg-primary: #f8fafc; /* slate-50 */
+  --color-bg-secondary: #ffffff; /* white */
+  --color-bg-card: #ffffff;
+  --color-bg-card-hover: #f1f5f9; /* slate-100 */
+  --color-bg-input: #ffffff;
+  --color-border: #e2e8f0; /* slate-200 */
+  --color-border-focus: #10b981; /* green */
+  --color-text-primary: #0f172a; /* slate-900 */
+  --color-text-secondary: #475569; /* slate-600 */
+  --color-text-muted: #94a3b8; /* slate-400 */
+  --color-accent: #10b981; /* emerald-500 */
+  --color-accent-hover: #059669; /* emerald-600 */
+  --color-accent-light: rgba(16, 185, 129, 0.1);
   --color-success: #10b981;
   --color-success-light: rgba(16, 185, 129, 0.15);
   --color-warning: #f59e0b;
@@ -69,26 +69,25 @@
 
 @layer components {
   .glass-card {
-    background: linear-gradient(135deg, rgba(26, 31, 54, 0.9), rgba(34, 40, 71, 0.7));
-    backdrop-filter: blur(20px);
+    background: var(--color-bg-card);
     border: 1px solid var(--color-border);
-    border-radius: 16px;
-    transition: all 0.3s ease;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
   }
   .glass-card:hover {
-    border-color: rgba(99, 102, 241, 0.3);
-    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   }
 
   .gradient-text {
-    background: linear-gradient(135deg, #818cf8, #6366f1, #4f46e5);
+    background: var(--color-text-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .gradient-bg {
-    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #3730a3 100%);
+    background: var(--color-accent);
   }
 
   .gradient-success {
@@ -104,11 +103,11 @@
   }
 
   .btn-primary {
-    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    background: #1e293b; /* dark blue/gray shown in the "Salvar Configuracoes" reference */
     color: white;
     padding: 10px 20px;
-    border-radius: 10px;
-    font-weight: 600;
+    border-radius: 8px;
+    font-weight: 500;
     font-size: 14px;
     border: none;
     cursor: pointer;
@@ -118,21 +117,20 @@
     gap: 8px;
   }
   .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+    background: #0f172a;
   }
   .btn-primary:active {
     transform: translateY(0);
   }
 
   .btn-secondary {
-    background: var(--color-bg-card);
-    color: var(--color-text-primary);
+    background: transparent;
+    color: var(--color-accent);
     padding: 10px 20px;
-    border-radius: 10px;
+    border-radius: 8px;
     font-weight: 500;
     font-size: 14px;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-accent);
     cursor: pointer;
     transition: all 0.2s ease;
     display: inline-flex;
@@ -140,8 +138,7 @@
     gap: 8px;
   }
   .btn-secondary:hover {
-    background: var(--color-bg-card-hover);
-    border-color: var(--color-accent);
+    background: var(--color-accent-light);
   }
 
   .btn-danger {
@@ -171,7 +168,7 @@
     padding: 10px 14px;
     background: var(--color-bg-input);
     border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border-radius: 8px;
     color: var(--color-text-primary);
     font-size: 14px;
     transition: all 0.2s ease;
@@ -179,7 +176,7 @@
   }
   .input-field:focus {
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px var(--color-accent-light);
+    box-shadow: 0 0 0 1px var(--color-accent);
   }
   .input-field::placeholder {
     color: var(--color-text-muted);
@@ -190,7 +187,7 @@
     padding: 10px 14px;
     background: var(--color-bg-input);
     border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border-radius: 8px;
     color: var(--color-text-primary);
     font-size: 14px;
     transition: all 0.2s ease;
@@ -200,7 +197,7 @@
   }
   .select-field:focus {
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px var(--color-accent-light);
+    box-shadow: 0 0 0 1px var(--color-accent);
   }
 
   .badge {
@@ -257,11 +254,11 @@
   .data-table td {
     padding: 12px 16px;
     font-size: 14px;
-    border-bottom: 1px solid rgba(42, 48, 80, 0.5);
+    border-bottom: 1px solid var(--color-border);
     color: var(--color-text-secondary);
   }
   .data-table tr:hover td {
-    background: rgba(99, 102, 241, 0.03);
+    background: var(--color-bg-primary);
   }
 
   .modal-overlay {
