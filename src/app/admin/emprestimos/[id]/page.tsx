@@ -160,7 +160,7 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="space-y-5 animate-in relative">
       {toastMsg && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-[9999] px-4 py-3 rounded-xl shadow-2xl animate-in fade-in slide-in-from-top-5 border text-white text-sm text-center bg-[#1a1b26] border-accent flex justify-center items-center">
+        <div className="fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-full md:max-w-md z-[9999] px-4 py-4 md:py-3 rounded-xl shadow-2xl animate-in fade-in slide-in-from-top-5 border text-white text-sm font-medium text-center bg-[#1a1b26] border-accent">
           {toastMsg}
         </div>
       )}
