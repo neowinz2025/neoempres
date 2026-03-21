@@ -114,7 +114,7 @@ export default function AdminDashboard() {
                 <YAxis tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   contentStyle={{ background: '#1a1f36', border: '1px solid #2a3050', borderRadius: 12, fontSize: 12 }}
-                  formatter={(value: number) => [formatCurrency(value), '']}
+                  formatter={(value: any) => [formatCurrency(Number(value) || 0), '']}
                 />
                 <Area type="monotone" dataKey="emprestado" stroke="#6366f1" fill="url(#colorEmprestado)" strokeWidth={2} />
               </AreaChart>
@@ -133,7 +133,7 @@ export default function AdminDashboard() {
                 <YAxis tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   contentStyle={{ background: '#1a1f36', border: '1px solid #2a3050', borderRadius: 12, fontSize: 12 }}
-                  formatter={(value: number) => [formatCurrency(value), '']}
+                  formatter={(value: any) => [formatCurrency(Number(value) || 0), '']}
                 />
                 <Bar dataKey="recebido" fill="#10b981" radius={[4, 4, 0, 0]} />
               </BarChart>
