@@ -4,6 +4,12 @@ import { useState } from 'react'
 
 export default function RelatoriosPage() {
   const [loading, setLoading] = useState<string | null>(null)
+  const [toastMsg, setToastMsg] = useState('')
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(''), 4000)
+  }
 
   const download = async (tipo: string, formato: string) => {
     setLoading(`${tipo}-${formato}`)
@@ -24,7 +30,7 @@ export default function RelatoriosPage() {
         URL.revokeObjectURL(url)
       }
     } catch {
-      alert('Erro ao gerar relatório')
+      showToast('Erro ao gerar relatório')
     }
     setLoading(null)
   }
@@ -36,7 +42,13 @@ export default function RelatoriosPage() {
   ]
 
   return (
-    <div className="space-y-5 animate-in">
+    <div className="space-y-5 animate-in relative">
+      {toastMsg && (
+        <div className="fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl animate-in slide-in-from-bottom-5 border text-white bg-red-900/90 border-red-500">
+          {toastMsg}
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-bold">Relatórios</h1>
         <p className="text-text-muted text-sm mt-1">Exporte dados da carteira em diversos formatos</p>

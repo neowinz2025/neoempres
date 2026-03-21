@@ -6,7 +6,15 @@ export default function ConfiguracoesPage() {
   const [configs, setConfigs] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [toastMsg, setToastMsg] = useState('')
+  const [toastType, setToastType] = useState<'success' | 'error'>('success')
   
+  const showToast = (msg: string, type: 'success'|'error' = 'success') => {
+    setToastMsg(msg)
+    setToastType(type)
+    setTimeout(() => setToastMsg(''), 4000)
+  }
+
   // Senha states
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -32,19 +40,19 @@ export default function ConfiguracoesPage() {
       })
       if (!res.ok) throw new Error('Erro ao salvar as configurações.')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro genérico ao salvar configs')
+      showToast(err instanceof Error ? err.message : 'Erro genérico ao salvar configs', 'error')
       setSaving(false)
       return
     }
 
     if (newPassword || confirmPassword) {
       if (newPassword !== confirmPassword) {
-        alert('As senhas não coincidem!')
+        showToast('As senhas não coincidem!', 'error')
         setSaving(false)
         return
       }
       if (newPassword.length < 6) {
-        alert('A senha deve ter no mínimo 6 caracteres!')
+        showToast('A senha deve ter no mínimo 6 caracteres!', 'error')
         setSaving(false)
         return
       }
@@ -61,14 +69,14 @@ export default function ConfiguracoesPage() {
         setNewPassword('')
         setConfirmPassword('')
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Erro ao trocar senha')
+        showToast(err instanceof Error ? err.message : 'Erro ao trocar senha', 'error')
         setSaving(false)
         return
       }
     }
 
     setSaving(false)
-    alert('Configurações aplicadas com sucesso!')
+    showToast('Configurações aplicadas com sucesso!', 'success')
   }
 
   const handleChange = (key: string, value: string) => {
@@ -78,7 +86,13 @@ export default function ConfiguracoesPage() {
   if (loading) return <div className="flex justify-center py-12"><div className="w-8 h-8 border-3 border-accent border-t-transparent rounded-full animate-spin" /></div>
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-in">
+    <div className="max-w-3xl mx-auto space-y-6 animate-in relative">
+      {toastMsg && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl animate-in slide-in-from-bottom-5 border text-white ${toastType === 'success' ? 'bg-[#1a1b26] border-accent' : 'bg-red-900/90 border-red-500'}`}>
+          {toastMsg}
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-bold">Configurações do Sistema</h1>
         <p className="text-sm text-text-muted mt-1">Configure as taxas padrão e integrações de API</p>
@@ -108,7 +122,7 @@ export default function ConfiguracoesPage() {
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (file) {
-                        if (file.size > 1024 * 1024) return alert('A logo deve ter no máximo 1MB.')
+                        if (file.size > 1024 * 1024) return showToast('A logo deve ter no máximo 1MB.', 'error')
                         const reader = new FileReader()
                         reader.onload = (ev) => setConfigs(prev => ({ ...prev, APP_LOGO: ev.target?.result as string }))
                         reader.readAsDataURL(file)
@@ -202,8 +216,12 @@ export default function ConfiguracoesPage() {
                   type="button"
                   onClick={async () => {
                     const res = await fetch('/api/telegram/test', { method: 'POST' })
-                    if (res.ok) alert('Mensagem enviada! Verifique seu Telegram.')
-                    else alert('Erro ao enviar mensagem. Verifique o Token e o Chat ID.')
+                    if (res.ok) {
+                      showToast('Mensagem enviada com sucesso! Verifique seu Telegram.', 'success')
+                    } else {
+                      const errData = await res.json()
+                      showToast(`Erro na integração. Telegram respondeu: ${errData.error || 'Desconhecido'}`, 'error')
+                    }
                   }}
                   className="btn-secondary px-4 text-xs font-semibold whitespace-nowrap"
                 >

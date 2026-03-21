@@ -6,8 +6,8 @@ export async function POST() {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
-  const ok = await sendTelegram(`🔔 <b>Teste de Conexão Bem Sucedido!</b>\n\nA integração com o Telegram está ativa e configurada corretamente no seu sistema LoanPro.`)
+  const result = await sendTelegram(`🔔 <b>Teste de Conexão Bem Sucedido!</b>\n\nA integração com o Telegram está ativa e configurada corretamente no seu sistema LoanPro.`)
   
-  if (ok) return NextResponse.json({ success: true })
-  return NextResponse.json({ error: 'Failed to send' }, { status: 500 })
+  if (result.success) return NextResponse.json({ success: true })
+  return NextResponse.json({ error: result.error || 'Failed to send' }, { status: 500 })
 }

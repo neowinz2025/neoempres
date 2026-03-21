@@ -33,6 +33,14 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
   const [pixModal, setPixModal] = useState<{ qrCode: string | null; qrCodeText: string; valor: number } | null>(null)
   const [generatingPix, setGeneratingPix] = useState<string | null>(null)
   const [tab, setTab] = useState<'parcelas' | 'historico'>('parcelas')
+  const [toastMsg, setToastMsg] = useState('')
+  const [toastType, setToastType] = useState<'success' | 'error'>('success')
+
+  const showToast = (msg: string, type: 'success'|'error' = 'success') => {
+    setToastMsg(msg)
+    setToastType(type)
+    setTimeout(() => setToastMsg(''), 4000)
+  }
 
   const fetchData = useCallback(async () => {
     try {
@@ -58,10 +66,10 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
           valor: json.data.valor,
         })
       } else {
-        alert('Erro ao gerar PIX. Tente novamente.')
+        showToast('Erro ao gerar PIX. Tente novamente.', 'error')
       }
     } catch {
-      alert('Erro ao gerar PIX.')
+      showToast('Erro ao gerar PIX.', 'error')
     }
     setGeneratingPix(null)
   }
@@ -99,6 +107,12 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
         </div>
         <span className="text-sm font-medium text-text-primary">Olá, {data.nome.split(' ')[0]} 👋</span>
       </header>
+      
+      {toastMsg && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl animate-in slide-in-from-bottom-5 border text-white ${toastType === 'success' ? 'bg-[#1a1b26] border-accent' : 'bg-red-900/90 border-red-500'}`}>
+          {toastMsg}
+        </div>
+      )}
 
       <div className="p-4 max-w-lg mx-auto space-y-4 animate-in pb-20">
         {/* Summary */}
@@ -210,7 +224,7 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(pixModal.qrCodeText)
-                    alert('Código copiado!')
+                    showToast('Código PIX copiado com sucesso!', 'success')
                   }}
                   className="btn-primary btn-sm flex-shrink-0"
                 >

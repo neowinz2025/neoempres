@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 
-export async function sendTelegram(mensagem: string, chatIdOverride?: string): Promise<boolean> {
+export async function sendTelegram(mensagem: string, chatIdOverride?: string): Promise<{success: boolean; error?: string}> {
   const botConf = await prisma.config.findUnique({ where: { key: 'TELEGRAM_BOT_TOKEN' } })
   const botToken = botConf?.value || process.env.TELEGRAM_BOT_TOKEN
 
@@ -8,8 +8,7 @@ export async function sendTelegram(mensagem: string, chatIdOverride?: string): P
   const chatId = chatIdOverride || chatConf?.value || process.env.TELEGRAM_CHAT_ID
 
   if (!botToken || !chatId) {
-    console.warn('[Telegram] Token ou ChatID ausente no banco/env')
-    return false
+    return { success: false, error: 'Token ou ChatID ausente nas configurações.' }
   }
 
   try {
@@ -27,13 +26,14 @@ export async function sendTelegram(mensagem: string, chatIdOverride?: string): P
     )
 
     if (!res.ok) {
-      console.error('[Telegram] Error:', await res.text())
-      return false
+      const errText = await res.text()
+      console.error('[Telegram] Error:', errText)
+      return { success: false, error: errText }
     }
 
-    return true
+    return { success: true }
   } catch (error) {
     console.error('[Telegram] Error:', error)
-    return false
+    return { success: false, error: String(error) }
   }
 }

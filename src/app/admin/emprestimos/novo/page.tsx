@@ -27,8 +27,14 @@ export default function NovoEmprestimoPage() {
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
   const [simulacao, setSimulacao] = useState<{valorParcela: number; totalPago: number; totalJuros: number; taxaCalculada: number} | null>(null)
   const [saving, setSaving] = useState(false)
+  const [toastMsg, setToastMsg] = useState('')
 
   const taxaLabel = frequencia === 'MENSAL' ? 'a.m.' : frequencia === 'SEMANAL' ? 'a.s.' : 'a.d.'
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(''), 4000)
+  }
 
   useEffect(() => {
     fetch('/api/clientes?limit=1000').then(r => r.json()).then(j => setClientes(j.data || []))
@@ -114,12 +120,18 @@ export default function NovoEmprestimoPage() {
       router.push(`/admin/emprestimos/${json.data.id}`)
     } else {
       setSaving(false)
-      alert('Erro ao criar empréstimo')
+      showToast('Erro ao criar empréstimo')
     }
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5 animate-in">
+    <div className="max-w-2xl mx-auto space-y-5 animate-in relative">
+      {toastMsg && (
+        <div className="fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl animate-in slide-in-from-bottom-5 border text-white bg-red-900/90 border-red-500">
+          {toastMsg}
+        </div>
+      )}
+
       <h1 className="text-2xl font-bold">Novo Empréstimo</h1>
 
       <form onSubmit={handleSubmit} className="space-y-5">
