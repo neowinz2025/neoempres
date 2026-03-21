@@ -48,12 +48,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md animate-in relative">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-bg mb-4 pulse-glow">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
+          <div className="mx-auto w-24 h-24 mb-4 pulse-glow">
+            <img src="/api/icon" alt="LoanPro Logo" className="w-full h-full object-contain drop-shadow-xl rounded-2xl" />
           </div>
           <h1 className="text-3xl font-bold gradient-text">LoanPro</h1>
           <p className="text-text-muted mt-2 text-sm">Gestão de Empréstimos Pessoais</p>
@@ -71,13 +67,13 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">Email</label>
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">Usuário ou Email</label>
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input-field"
-                placeholder="admin@loanpro.com"
+                placeholder="Seu usuário de acesso"
                 required
                 autoFocus
               />
@@ -110,10 +106,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          <p className="mt-6 text-center text-xs text-text-muted">
-            Credenciais padrão: admin@loanpro.com / admin123
-          </p>
         </div>
 
         <p className="text-center text-xs text-text-muted mt-6">

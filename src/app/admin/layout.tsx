@@ -75,12 +75,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         {/* Logo */}
         <div className="p-5 flex items-center gap-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
-          <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center flex-shrink-0">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/5 p-1">
+            <img src="/api/icon" alt="Logo" className="w-full h-full object-contain rounded-lg drop-shadow-sm" />
           </div>
           <div>
             <h1 className="font-bold text-lg text-text-primary">LoanPro</h1>

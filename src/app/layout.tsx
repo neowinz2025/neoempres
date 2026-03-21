@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: 'LoanPro - Gestão de Empréstimos',
   description: 'Sistema completo de gestão de empréstimos pessoais com pagamento PIX integrado',
   manifest: '/manifest.json',
-  icons: { icon: '/favicon.ico' },
+  icons: { icon: '/api/icon' },
 }
 
 export const viewport: Viewport = {

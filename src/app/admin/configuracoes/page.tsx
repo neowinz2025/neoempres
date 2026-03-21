@@ -44,6 +44,44 @@ export default function ConfiguracoesPage() {
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
+        {/* Marca / Logo */}
+        <div className="glass-card p-5 space-y-4">
+          <h2 className="font-semibold text-accent uppercase tracking-wide text-sm flex items-center gap-2">
+            <span>🎨</span> Personalização da Marca
+          </h2>
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Logo do Sistema (Favicon & Painel)</label>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center p-2 overflow-hidden flex-shrink-0">
+                  {configs['APP_LOGO'] ? (
+                    <img src={configs['APP_LOGO']} alt="Preview" className="w-full h-full object-contain" />
+                  ) : (
+                    <span className="text-xs text-text-muted">Sem logo</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        if (file.size > 1024 * 1024) return alert('A logo deve ter no máximo 1MB.')
+                        const reader = new FileReader()
+                        reader.onload = (ev) => setConfigs(prev => ({ ...prev, APP_LOGO: ev.target?.result as string }))
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                    className="block w-full text-sm text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 cursor-pointer"
+                  />
+                  <p className="text-xs text-text-muted mt-2">Recomendado: Imagem quadrada em formato PNG transparente ou SVG. Max 1MB.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Financeiro */}
         <div className="glass-card p-5 space-y-4">
           <h2 className="font-semibold text-accent uppercase tracking-wide text-sm flex items-center gap-2">
