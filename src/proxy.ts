@@ -5,7 +5,7 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'default-secret-change-in-production'
 )
 
-const publicPaths = ['/login', '/api/auth/login', '/api/webhook', '/cliente']
+const publicPaths = ['/login', '/api/auth/login', '/api/webhook', '/api/icon', '/cliente']
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl

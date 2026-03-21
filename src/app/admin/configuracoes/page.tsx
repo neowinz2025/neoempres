@@ -143,22 +143,7 @@ export default function ConfiguracoesPage() {
           </p>
         </div>
 
-        {/* Financeiro */}
-        <div className="glass-card p-5 space-y-4">
-          <h2 className="font-semibold text-accent uppercase tracking-wide text-sm flex items-center gap-2">
-            <span>💰</span> Taxas Padrão de Atraso
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Multa por Atraso (%)</label>
-              <input type="number" step="0.01" value={configs['MULTA_PERCENT'] || ''} onChange={(e) => handleChange('MULTA_PERCENT', e.target.value)} className="input-field" placeholder="2.0" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Juros Diário (%)</label>
-              <input type="number" step="0.001" value={configs['JUROS_DIARIO'] || ''} onChange={(e) => handleChange('JUROS_DIARIO', e.target.value)} className="input-field" placeholder="0.033" />
-            </div>
-          </div>
-        </div>
+        {/* Financeiro - Removido por ser Individual agora */}
 
         {/* PIX */}
         <div className="glass-card p-5 space-y-4">
@@ -211,7 +196,20 @@ export default function ConfiguracoesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">Telegram Chat ID (Seu ID ou do Grupo)</label>
-              <input type="text" value={configs['TELEGRAM_CHAT_ID'] || ''} onChange={(e) => handleChange('TELEGRAM_CHAT_ID', e.target.value)} className="input-field" placeholder="Ex: 123456789" />
+              <div className="flex gap-2">
+                <input type="text" value={configs['TELEGRAM_CHAT_ID'] || ''} onChange={(e) => handleChange('TELEGRAM_CHAT_ID', e.target.value)} className="input-field flex-1" placeholder="Ex: 123456789" />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await fetch('/api/telegram/test', { method: 'POST' })
+                    if (res.ok) alert('Mensagem enviada! Verifique seu Telegram.')
+                    else alert('Erro ao enviar mensagem. Verifique o Token e o Chat ID.')
+                  }}
+                  className="btn-secondary px-4 text-xs font-semibold whitespace-nowrap"
+                >
+                  Testar Bot
+                </button>
+              </div>
             </div>
           </div>
         </div>
