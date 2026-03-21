@@ -37,12 +37,24 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const markPaid = async (parcelaId: string) => {
+  const markPaid = async (parcelaId: string, valorOriginal: number, valorJaPago: number | null) => {
+    const defaultAmount = (valorOriginal - (valorJaPago || 0)).toFixed(2)
+    const amountStr = window.prompt(`Registrar pagamento.\n\nValor total da parcela: ${fmt(valorOriginal)}\nJá pago anteriormente: ${fmt(valorJaPago || 0)}\n\nDigite o valor efetivamente pago agora:`, defaultAmount)
+    
+    if (amountStr === null) return // Canceled
+    
+    const paymentNow = parseFloat(amountStr.replace(',', '.'))
+    if (isNaN(paymentNow) || paymentNow <= 0) return alert('Valor inválido!')
+    
+    const novoValorTotalPago = (valorJaPago || 0) + paymentNow
+    const isPartial = novoValorTotalPago < valorOriginal
+    const status = isPartial ? 'PARCIAL' : 'PAGO'
+
     setPayingId(parcelaId)
     await fetch(`/api/parcelas/${parcelaId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'PAGO' }),
+      body: JSON.stringify({ status, valorPago: novoValorTotalPago }),
     })
     await fetchData()
     setPayingId(null)
@@ -132,12 +144,12 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
                   <td>
                     {p.status !== 'PAGO' && (
                       <button
-                        onClick={() => markPaid(p.id)}
+                        onClick={() => markPaid(p.id, p.valor, p.valorPago)}
                         disabled={payingId === p.id}
                         className="btn-sm text-xs"
                         style={{ background: 'var(--color-success-light)', color: 'var(--color-success)', border: 'none', cursor: 'pointer', borderRadius: 8, padding: '4px 12px', fontWeight: 600 }}
                       >
-                        {payingId === p.id ? '...' : '✓ Marcar Pago'}
+                        {payingId === p.id ? '...' : p.status === 'PARCIAL' ? '✓ Completar Pgto' : '✓ Somar Pgto'}
                       </button>
                     )}
                   </td>
@@ -160,8 +172,8 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
                 <div className="text-xs text-text-muted">{fmtDate(p.vencimento)}</div>
               </div>
               {p.status !== 'PAGO' && (
-                <button onClick={() => markPaid(p.id)} disabled={payingId === p.id} className="btn-sm btn-primary text-xs">
-                  {payingId === p.id ? '...' : '✓'}
+                <button onClick={() => markPaid(p.id, p.valor, p.valorPago)} disabled={payingId === p.id} className="btn-sm btn-primary text-xs">
+                  {payingId === p.id ? '...' : '✓ Pgto'}
                 </button>
               )}
             </div>

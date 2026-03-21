@@ -35,6 +35,14 @@ export class AtlasDaoProvider implements PixProvider {
     if (description) {
       body.description = description
     }
+    
+    body.taxNumber = '00000000000'
+    body.merchantOrderId = `ORDER-${Math.random().toString(36).substring(7)}`
+
+    const walletConf = await prisma.config.findUnique({ where: { key: 'ATLASDAO_WALLET_ADDRESS' } })
+    if (walletConf?.value) {
+      body.depixAddress = walletConf.value
+    }
 
     // Attempt to fetch webhook url/secret from config to pass dynamically
     const webhookUrlConf = await prisma.config.findUnique({ where: { key: 'APP_WEBHOOK_URL' } })

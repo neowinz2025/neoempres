@@ -8,9 +8,7 @@ class PixManager {
 
   constructor() {
     this.providers = [
-      new FastDePixProvider(),
-      new AtlasDaoProvider(),
-      new BancoInterProvider(),
+      new AtlasDaoProvider()
     ]
   }
 

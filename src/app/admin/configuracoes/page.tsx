@@ -172,19 +172,7 @@ export default function ConfiguracoesPage() {
             </div>
           </div>
 
-          <h3 className="font-semibold text-text-primary text-sm mt-4">FastDePix (Principal)</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-border pb-4 mb-4" style={{ borderColor: 'var(--color-border)' }}>
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">API Key (FastDePix)</label>
-              <input type="password" value={configs['FASTDEPIX_API_KEY'] || ''} onChange={(e) => handleChange('FASTDEPIX_API_KEY', e.target.value)} className="input-field" placeholder="Sua chave..." />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Webhook Secret (FastDePix)</label>
-              <input type="password" value={configs['FASTDEPIX_WEBHOOK_SECRET'] || ''} onChange={(e) => handleChange('FASTDEPIX_WEBHOOK_SECRET', e.target.value)} className="input-field" placeholder="Segredo..." />
-            </div>
-          </div>
-
-          <h3 className="font-semibold text-text-primary text-sm mt-4">AtlasDao (Fallback Secundário)</h3>
+          <h3 className="font-semibold text-text-primary text-sm mt-4">AtlasDao (Principal)</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">API Key (AtlasDao)</label>
@@ -193,6 +181,10 @@ export default function ConfiguracoesPage() {
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">Webhook Secret (AtlasDao)</label>
               <input type="password" value={configs['ATLASDAO_WEBHOOK_SECRET'] || ''} onChange={(e) => handleChange('ATLASDAO_WEBHOOK_SECRET', e.target.value)} className="input-field" placeholder="Segredo HMAC..." />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Endereço da Carteira (Wallet / DePix Address)</label>
+              <input type="text" value={configs['ATLASDAO_WALLET_ADDRESS'] || ''} onChange={(e) => handleChange('ATLASDAO_WALLET_ADDRESS', e.target.value)} className="input-field" placeholder="Ex: 0x123... (Necessário para gerar QR Code)" />
             </div>
           </div>
         </div>

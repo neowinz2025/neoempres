@@ -30,33 +30,47 @@ export async function PUT(
     if (valorPago !== undefined) updateData.valorPago = valorPago
     if (dataPagamento) updateData.dataPagamento = new Date(dataPagamento)
 
-    if (status === 'PAGO') {
+    if (status === 'PAGO' || status === 'PARCIAL') {
+      const isStatusChange = parcela.status !== status
+      const previouslyPaid = parcela.valorPago || 0
+      const currentTotalPaid = valorPago !== undefined ? valorPago : parcela.valor
+      
+      const newPaymentAmount = currentTotalPaid - previouslyPaid
+
       updateData.dataPagamento = dataPagamento ? new Date(dataPagamento) : new Date()
-      updateData.valorPago = valorPago || parcela.valor
+      updateData.valorPago = currentTotalPaid
+      
+      // Se não pagou tudo, força o status para PARCIAL
+      if (currentTotalPaid < parcela.valor && status === 'PAGO') {
+        updateData.status = 'PARCIAL'
+      }
 
-      // Update saldo devedor
-      const paid = valorPago || parcela.valor
-      await prisma.emprestimo.update({
-        where: { id: parcela.emprestimoId },
-        data: {
-          saldoDevedor: { decrement: paid },
-        },
-      })
-
-      // Check if all installments are paid
-      const pendingCount = await prisma.parcela.count({
-        where: {
-          emprestimoId: parcela.emprestimoId,
-          status: { not: 'PAGO' },
-          id: { not: id },
-        },
-      })
-
-      if (pendingCount === 0) {
+      if (newPaymentAmount > 0) {
+        // Update saldo devedor
         await prisma.emprestimo.update({
           where: { id: parcela.emprestimoId },
-          data: { status: 'QUITADO', saldoDevedor: 0 },
+          data: {
+            saldoDevedor: { decrement: newPaymentAmount },
+          },
         })
+      }
+
+      if (updateData.status === 'PAGO' || status === 'PAGO') {
+        // Check if all installments are paid
+        const pendingCount = await prisma.parcela.count({
+          where: {
+            emprestimoId: parcela.emprestimoId,
+            status: { not: 'PAGO' },
+            id: { not: id },
+          },
+        })
+
+        if (pendingCount === 0 && currentTotalPaid >= parcela.valor) {
+          await prisma.emprestimo.update({
+            where: { id: parcela.emprestimoId },
+            data: { status: 'QUITADO', saldoDevedor: 0 },
+          })
+        }
       }
     }
 
