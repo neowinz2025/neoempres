@@ -13,7 +13,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const user = await prisma.user.findUnique({ where: { email } })
+    const cleanEmail = email.trim()
+
+    const user = await prisma.user.findUnique({ where: { email: cleanEmail } })
     if (!user || !user.active) {
       return NextResponse.json(
         { error: 'Credenciais inválidas' },
