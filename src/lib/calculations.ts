@@ -1,4 +1,12 @@
-import { addMonths, differenceInDays, isAfter } from 'date-fns'
+import { addMonths, addDays, addWeeks, differenceInDays, isAfter } from 'date-fns'
+
+type Frequencia = 'DIARIO' | 'SEMANAL' | 'MENSAL'
+
+function getVencimento(inicio: Date, n: number, freq: Frequencia): Date {
+  if (freq === 'DIARIO') return addDays(inicio, n)
+  if (freq === 'SEMANAL') return addWeeks(inicio, n)
+  return addMonths(inicio, n)
+}
 
 export interface ParcelaCalc {
   numero: number
@@ -19,11 +27,12 @@ export interface SimulacaoResult {
  */
 export function calcPrice(
   valor: number,
-  taxaMensal: number,
+  taxa: number,
   numParcelas: number,
-  dataInicio: Date = new Date()
+  dataInicio: Date = new Date(),
+  frequencia: Frequencia = 'MENSAL'
 ): SimulacaoResult {
-  const i = taxaMensal / 100
+  const i = taxa / 100
   const pmt = valor * (i * Math.pow(1 + i, numParcelas)) / (Math.pow(1 + i, numParcelas) - 1)
   const valorParcela = Math.round(pmt * 100) / 100
   const totalPago = Math.round(valorParcela * numParcelas * 100) / 100
@@ -34,7 +43,7 @@ export function calcPrice(
     parcelas.push({
       numero: n,
       valor: valorParcela,
-      vencimento: addMonths(dataInicio, n),
+      vencimento: getVencimento(dataInicio, n, frequencia),
     })
   }
 
@@ -46,11 +55,12 @@ export function calcPrice(
  */
 export function calcSimple(
   valor: number,
-  taxaMensal: number,
+  taxa: number,
   numParcelas: number,
-  dataInicio: Date = new Date()
+  dataInicio: Date = new Date(),
+  frequencia: Frequencia = 'MENSAL'
 ): SimulacaoResult {
-  const i = taxaMensal / 100
+  const i = taxa / 100
   const jurosMensal = valor * i
   const amortizacao = valor / numParcelas
   const valorParcela = Math.round((amortizacao + jurosMensal) * 100) / 100
@@ -62,7 +72,7 @@ export function calcSimple(
     parcelas.push({
       numero: n,
       valor: valorParcela,
-      vencimento: addMonths(dataInicio, n),
+      vencimento: getVencimento(dataInicio, n, frequencia),
     })
   }
 
@@ -74,11 +84,12 @@ export function calcSimple(
  */
 export function calcBullet(
   valor: number,
-  taxaMensal: number,
+  taxa: number,
   prazoMeses: number,
-  dataInicio: Date = new Date()
+  dataInicio: Date = new Date(),
+  frequencia: Frequencia = 'MENSAL'
 ): SimulacaoResult {
-  const i = taxaMensal / 100
+  const i = taxa / 100
   const totalJuros = Math.round(valor * i * prazoMeses * 100) / 100
   const totalPago = Math.round((valor + totalJuros) * 100) / 100
 
@@ -86,7 +97,7 @@ export function calcBullet(
     {
       numero: 1,
       valor: totalPago,
-      vencimento: addMonths(dataInicio, prazoMeses),
+      vencimento: getVencimento(dataInicio, prazoMeses, frequencia),
     },
   ]
 
@@ -99,17 +110,18 @@ export function calcBullet(
 export function calcSimulacao(
   tipo: 'PRICE' | 'SIMPLE' | 'BULLET',
   valor: number,
-  taxaMensal: number,
+  taxa: number,
   numParcelas: number,
-  dataInicio: Date = new Date()
+  dataInicio: Date = new Date(),
+  frequencia: Frequencia = 'MENSAL'
 ): SimulacaoResult {
   switch (tipo) {
     case 'PRICE':
-      return calcPrice(valor, taxaMensal, numParcelas, dataInicio)
+      return calcPrice(valor, taxa, numParcelas, dataInicio, frequencia)
     case 'SIMPLE':
-      return calcSimple(valor, taxaMensal, numParcelas, dataInicio)
+      return calcSimple(valor, taxa, numParcelas, dataInicio, frequencia)
     case 'BULLET':
-      return calcBullet(valor, taxaMensal, numParcelas, dataInicio)
+      return calcBullet(valor, taxa, numParcelas, dataInicio, frequencia)
   }
 }
 

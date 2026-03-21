@@ -26,6 +26,12 @@ enum TipoEmprestimo {
   BULLET
 }
 
+enum FrequenciaPagamento {
+  DIARIO
+  SEMANAL
+  MENSAL
+}
+
 enum StatusEmprestimo {
   ATIVO
   QUITADO
@@ -86,6 +92,7 @@ model Emprestimo {
   valor         Float
   taxaJuros     Float
   tipo          TipoEmprestimo
+  frequencia    FrequenciaPagamento @default(MENSAL)
   numParcelas   Int
   valorParcela  Float
   saldoDevedor  Float

@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { clienteId, valor, taxaJuros, tipo, numParcelas, dataInicio, multaPercent, jurosDiario } = body
+    const { clienteId, valor, taxaJuros, tipo, numParcelas, dataInicio, multaPercent, jurosDiario, frequencia } = body
 
     if (!clienteId || !valor || taxaJuros === undefined || !tipo || !numParcelas) {
       return NextResponse.json(
@@ -63,7 +63,8 @@ export async function POST(request: NextRequest) {
     }
 
     const inicio = dataInicio ? new Date(dataInicio) : new Date()
-    const simulacao = calcSimulacao(tipo, valor, taxaJuros, numParcelas, inicio)
+    const freqVal = frequencia || 'MENSAL'
+    const simulacao = calcSimulacao(tipo, valor, taxaJuros, numParcelas, inicio, freqVal)
 
     const emprestimo = await prisma.emprestimo.create({
       data: {
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
         valor,
         taxaJuros,
         tipo,
+        frequencia: freqVal,
         numParcelas,
         valorParcela: simulacao.valorParcela,
         saldoDevedor: simulacao.totalPago,

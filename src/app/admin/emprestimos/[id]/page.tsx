@@ -9,7 +9,7 @@ interface Parcela {
 }
 interface Emprestimo {
   id: string; valor: number; taxaJuros: number; tipo: string; numParcelas: number; valorParcela: number
-  saldoDevedor: number; multaPercent: number; jurosDiario: number; status: string; token: string; createdAt: string
+  frequencia: 'DIARIO' | 'SEMANAL' | 'MENSAL'; saldoDevedor: number; multaPercent: number; jurosDiario: number; status: string; token: string; createdAt: string
   cliente: { id: string; nome: string; telefone: string; score: string; token: string }
   parcelas: Parcela[]
 }
@@ -88,7 +88,7 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
               Cliente: <Link href={`/admin/clientes/${emp.cliente.id}`} className="text-accent hover:underline">{emp.cliente.nome}</Link>
             </p>
             <p className="text-text-muted text-xs mt-1">
-              {emp.numParcelas}x de {fmt(emp.valorParcela)} • Taxa {emp.taxaJuros}% a.m. • Multa {emp.multaPercent}% • Juros dia {emp.jurosDiario}%
+              {emp.numParcelas}x de {fmt(emp.valorParcela)} ({emp.frequencia}) • Taxa {emp.taxaJuros}% {emp.frequencia === 'MENSAL' ? 'a.m.' : emp.frequencia === 'SEMANAL' ? 'a.s.' : 'a.d.'} • Multa {emp.multaPercent}% • Juros dia {emp.jurosDiario}%
             </p>
           </div>
           <button

@@ -19,11 +19,14 @@ export default function NovoEmprestimoPage() {
   const [taxaJuros, setTaxaJuros] = useState('5')
   const [tipo, setTipo] = useState<'PRICE' | 'SIMPLE' | 'BULLET'>('PRICE')
   const [numParcelas, setNumParcelas] = useState('12')
+  const [frequencia, setFrequencia] = useState<'DIARIO' | 'SEMANAL' | 'MENSAL'>('MENSAL')
   const [modoEntrada, setModoEntrada] = useState<'TAXA' | 'PARCELA'>('TAXA')
   const [valorParcelaInput, setValorParcelaInput] = useState('')
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
   const [simulacao, setSimulacao] = useState<{valorParcela: number; totalPago: number; totalJuros: number; taxaCalculada: number} | null>(null)
   const [saving, setSaving] = useState(false)
+
+  const taxaLabel = frequencia === 'MENSAL' ? 'a.m.' : frequencia === 'SEMANAL' ? 'a.s.' : 'a.d.'
 
   useEffect(() => {
     fetch('/api/clientes?limit=1000').then(r => r.json()).then(j => setClientes(j.data || []))
@@ -100,7 +103,7 @@ export default function NovoEmprestimoPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clienteId, valor: parseFloat(valor), taxaJuros: parseFloat(taxaAEnviar.toFixed(4)),
-        tipo, numParcelas: parseInt(numParcelas), dataInicio,
+        tipo, numParcelas: parseInt(numParcelas), dataInicio, frequencia
       }),
     })
     if (res.ok) {
@@ -142,7 +145,7 @@ export default function NovoEmprestimoPage() {
             </div>
             {modoEntrada === 'TAXA' ? (
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">Taxa de Juros (% a.m.)</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Taxa de Juros (% {taxaLabel})</label>
                 <input type="number" value={taxaJuros} onChange={(e) => setTaxaJuros(e.target.value)} className="input-field" placeholder="5" step="0.01" min="0.1" required />
               </div>
             ) : (
@@ -170,9 +173,19 @@ export default function NovoEmprestimoPage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Data de Início</label>
-            <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="input-field" required />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Data de Início</label>
+              <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="input-field" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Frequência</label>
+              <select value={frequencia} onChange={(e) => setFrequencia(e.target.value as 'DIARIO' | 'SEMANAL' | 'MENSAL')} className="select-field">
+                <option value="MENSAL">Mensal</option>
+                <option value="SEMANAL">Semanal</option>
+                <option value="DIARIO">Diário</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -184,7 +197,7 @@ export default function NovoEmprestimoPage() {
               <div><div className="text-xs text-text-muted mb-1">Valor da Parcela</div><div className="text-sm font-bold text-accent">{fmt(simulacao.valorParcela)}</div></div>
               <div><div className="text-xs text-text-muted mb-1">Total Pago</div><div className="text-sm font-bold text-text-primary">{fmt(simulacao.totalPago)}</div></div>
               <div><div className="text-xs text-text-muted mb-1">Total de Juros</div><div className="text-sm font-bold text-yellow-400">{fmt(simulacao.totalJuros)}</div></div>
-              <div><div className="text-xs text-text-muted mb-1">Taxa Implícita</div><div className="text-sm font-bold text-info">{simulacao.taxaCalculada.toFixed(2)}% a.m.</div></div>
+              <div><div className="text-xs text-text-muted mb-1">Taxa Implícita</div><div className="text-sm font-bold text-info">{simulacao.taxaCalculada.toFixed(2)}% {taxaLabel}</div></div>
             </div>
           </div>
         )}
