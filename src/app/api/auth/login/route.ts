@@ -13,9 +13,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const cleanEmail = email.trim()
+    const cleanEmail = email.trim().toLowerCase()
 
-    const user = await prisma.user.findUnique({ where: { email: cleanEmail } })
+    // Buscamos ignorando case
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: cleanEmail,
+          mode: 'insensitive'
+        }
+      }
+    })
     if (!user || !user.active) {
       return NextResponse.json(
         { error: 'Credenciais inválidas' },
