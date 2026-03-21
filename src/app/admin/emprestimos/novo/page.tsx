@@ -19,8 +19,10 @@ export default function NovoEmprestimoPage() {
   const [taxaJuros, setTaxaJuros] = useState('5')
   const [tipo, setTipo] = useState<'PRICE' | 'SIMPLE' | 'BULLET'>('PRICE')
   const [numParcelas, setNumParcelas] = useState('12')
+  const [modoEntrada, setModoEntrada] = useState<'TAXA' | 'PARCELA'>('TAXA')
+  const [valorParcelaInput, setValorParcelaInput] = useState('')
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
-  const [simulacao, setSimulacao] = useState<{valorParcela: number; totalPago: number; totalJuros: number} | null>(null)
+  const [simulacao, setSimulacao] = useState<{valorParcela: number; totalPago: number; totalJuros: number; taxaCalculada: number} | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -30,37 +32,72 @@ export default function NovoEmprestimoPage() {
   // Auto-simulate
   useEffect(() => {
     const v = parseFloat(valor)
-    const t = parseFloat(taxaJuros)
     const n = parseInt(numParcelas)
-    if (!v || !t || !n || v <= 0) { setSimulacao(null); return }
+    if (!v || !n || v <= 0) { setSimulacao(null); return }
 
-    const i = t / 100
-    let valorParcela: number, totalPago: number
-    if (tipo === 'PRICE') {
-      valorParcela = v * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1)
-      totalPago = valorParcela * n
-    } else if (tipo === 'SIMPLE') {
-      valorParcela = v / n + v * i
-      totalPago = valorParcela * n
+    if (modoEntrada === 'TAXA') {
+      const t = parseFloat(taxaJuros)
+      if (!t) { setSimulacao(null); return }
+      const i = t / 100
+      let valorParcela: number, totalPago: number
+      if (tipo === 'PRICE') {
+        valorParcela = v * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1)
+        totalPago = valorParcela * n
+      } else if (tipo === 'SIMPLE') {
+        valorParcela = v / n + v * i
+        totalPago = valorParcela * n
+      } else {
+        totalPago = v + v * i * n
+        valorParcela = totalPago
+      }
+      setSimulacao({
+        valorParcela: Math.round(valorParcela * 100) / 100,
+        totalPago: Math.round(totalPago * 100) / 100,
+        totalJuros: Math.round((totalPago - v) * 100) / 100,
+        taxaCalculada: t
+      })
     } else {
-      totalPago = v + v * i * n
-      valorParcela = totalPago
+      const pmt = parseFloat(valorParcelaInput)
+      if (!pmt || pmt * n <= v) { setSimulacao(null); return }
+      
+      let i = 0;
+      if (tipo === 'SIMPLE') {
+        i = (pmt - v / n) / v;
+      } else if (tipo === 'BULLET') {
+        i = (pmt - v) / (v * n);
+      } else {
+        // Price - Bisection Method
+        let low = 0.000001;
+        let high = 1.0;
+        for (let iter = 0; iter < 50; iter++) {
+          i = (low + high) / 2;
+          let guessPV = pmt * (1 - Math.pow(1 + i, -n)) / i;
+          if (guessPV > v) low = i; else high = i;
+        }
+      }
+      
+      const t = i * 100;
+      setSimulacao({
+        valorParcela: Math.round(pmt * 100) / 100,
+        totalPago: Math.round(pmt * n * 100) / 100,
+        totalJuros: Math.round((pmt * n - v) * 100) / 100,
+        taxaCalculada: t
+      })
     }
-    setSimulacao({
-      valorParcela: Math.round(valorParcela * 100) / 100,
-      totalPago: Math.round(totalPago * 100) / 100,
-      totalJuros: Math.round((totalPago - v) * 100) / 100,
-    })
-  }, [valor, taxaJuros, tipo, numParcelas])
+  }, [valor, taxaJuros, tipo, numParcelas, modoEntrada, valorParcelaInput])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!simulacao) return
+    
     setSaving(true)
+    const taxaAEnviar = simulacao.taxaCalculada
+
     const res = await fetch('/api/emprestimos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        clienteId, valor: parseFloat(valor), taxaJuros: parseFloat(taxaJuros),
+        clienteId, valor: parseFloat(valor), taxaJuros: parseFloat(taxaAEnviar.toFixed(4)),
         tipo, numParcelas: parseInt(numParcelas), dataInicio,
       }),
     })
@@ -89,15 +126,29 @@ export default function NovoEmprestimoPage() {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Valor (R$)</label>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Valor do Empréstimo (R$)</label>
               <input type="number" value={valor} onChange={(e) => setValor(e.target.value)} className="input-field" placeholder="10000" step="0.01" min="100" required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Taxa de Juros (% a.m.)</label>
-              <input type="number" value={taxaJuros} onChange={(e) => setTaxaJuros(e.target.value)} className="input-field" placeholder="5" step="0.01" min="0.1" required />
+              <label className="block text-sm font-medium text-text-secondary mb-1">Modo de Cálculo</label>
+              <select value={modoEntrada} onChange={(e) => setModoEntrada(e.target.value as 'TAXA' | 'PARCELA')} className="select-field">
+                <option value="TAXA">Fixar Taxa de Juros</option>
+                <option value="PARCELA">Fixar Valor da Parcela</option>
+              </select>
             </div>
+            {modoEntrada === 'TAXA' ? (
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Taxa de Juros (% a.m.)</label>
+                <input type="number" value={taxaJuros} onChange={(e) => setTaxaJuros(e.target.value)} className="input-field" placeholder="5" step="0.01" min="0.1" required />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Valor da Parcela (R$)</label>
+                <input type="number" value={valorParcelaInput} onChange={(e) => setValorParcelaInput(e.target.value)} className="input-field" placeholder="0.00" step="0.01" min="0.1" required />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -125,10 +176,11 @@ export default function NovoEmprestimoPage() {
         {simulacao && (
           <div className="glass-card p-5 space-y-3" style={{ borderColor: 'rgba(99,102,241,0.3)' }}>
             <h2 className="font-semibold text-sm text-accent uppercase tracking-wide">📊 Simulação</h2>
-            <div className="grid grid-cols-3 gap-4">
-              <div><div className="text-xs text-text-muted mb-1">Valor da Parcela</div><div className="text-lg font-bold text-accent">{fmt(simulacao.valorParcela)}</div></div>
-              <div><div className="text-xs text-text-muted mb-1">Total Pago</div><div className="text-lg font-bold text-text-primary">{fmt(simulacao.totalPago)}</div></div>
-              <div><div className="text-xs text-text-muted mb-1">Total de Juros</div><div className="text-lg font-bold text-yellow-400">{fmt(simulacao.totalJuros)}</div></div>
+            <div className="grid grid-cols-4 gap-4">
+              <div><div className="text-xs text-text-muted mb-1">Valor da Parcela</div><div className="text-sm font-bold text-accent">{fmt(simulacao.valorParcela)}</div></div>
+              <div><div className="text-xs text-text-muted mb-1">Total Pago</div><div className="text-sm font-bold text-text-primary">{fmt(simulacao.totalPago)}</div></div>
+              <div><div className="text-xs text-text-muted mb-1">Total de Juros</div><div className="text-sm font-bold text-yellow-400">{fmt(simulacao.totalJuros)}</div></div>
+              <div><div className="text-xs text-text-muted mb-1">Taxa Implícita</div><div className="text-sm font-bold text-info">{simulacao.taxaCalculada.toFixed(2)}% a.m.</div></div>
             </div>
           </div>
         )}
