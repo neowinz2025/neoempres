@@ -13,7 +13,7 @@ export async function PUT(
 
   const { id } = await params
   const body = await request.json()
-  const { status, valorPago, dataPagamento } = body
+  const { status, valorPago, dataPagamento, formaPagamento, comprovante, vencimento, valorOriginal } = body
 
   try {
     const parcela = await prisma.parcela.findUnique({
@@ -29,6 +29,12 @@ export async function PUT(
     if (status) updateData.status = status
     if (valorPago !== undefined) updateData.valorPago = valorPago
     if (dataPagamento) updateData.dataPagamento = new Date(dataPagamento)
+    
+    // Updates adicionais para a funcionalidade de renegociação / registro de pagamento
+    if (formaPagamento !== undefined) updateData.formaPagamento = formaPagamento
+    if (comprovante !== undefined) updateData.comprovante = comprovante
+    if (vencimento !== undefined) updateData.vencimento = new Date(vencimento)
+    if (valorOriginal !== undefined) updateData.valorOriginal = parseFloat(valorOriginal)
 
     if (status === 'PAGO' || status === 'PARCIAL') {
       const isStatusChange = parcela.status !== status

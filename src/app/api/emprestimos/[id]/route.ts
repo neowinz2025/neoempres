@@ -132,3 +132,34 @@ export async function PUT(
     return NextResponse.json({ error: 'Erro ao atualizar empréstimo' }, { status: 500 })
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession()
+  if (!session || session.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
+  const { id } = await params
+
+  try {
+    await prisma.emprestimo.delete({
+      where: { id },
+    })
+    
+    await prisma.log.create({
+      data: {
+        userId: session.userId,
+        acao: 'DELETAR_EMPRESTIMO',
+        detalhes: `Empréstimo ${id} excluído com sucesso`,
+      },
+    })
+    
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting loan:', error)
+    return NextResponse.json({ error: 'Erro ao deletar empréstimo' }, { status: 500 })
+  }
+}

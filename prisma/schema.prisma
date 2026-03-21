@@ -121,6 +121,8 @@ model Parcela {
   pixTxId        String?
   dataPagamento  DateTime?
   valorPago      Float?
+  formaPagamento String?
+  comprovante    String?         @db.Text
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   notificacoes   Notificacao[]
