@@ -13,18 +13,21 @@ export async function GET(request: NextRequest) {
       return new NextResponse(buffer, {
         headers: {
           'Content-Type': mime,
-          'Cache-Control': 'public, max-age=60',
+          'Cache-Control': 'public, max-age=3600',
         },
       })
     }
     
-    // Default SVG
-    const defaultSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>`
+    // Default SVG icon - emerald green with dollar sign
+    const defaultSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+      <rect width="512" height="512" rx="80" fill="#10b981"/>
+      <text x="256" y="380" font-family="Arial,sans-serif" font-size="350" font-weight="bold" fill="white" text-anchor="middle">$</text>
+    </svg>`
     
     return new NextResponse(defaultSvg, {
       headers: {
         'Content-Type': 'image/svg+xml',
-        'Cache-Control': 'public, max-age=60',
+        'Cache-Control': 'public, max-age=3600',
       },
     })
   } catch (error) {

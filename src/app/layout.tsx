@@ -6,13 +6,8 @@ export const metadata: Metadata = {
   description: 'Sistema completo de gestão de empréstimos pessoais com pagamento PIX integrado',
   manifest: '/manifest.json',
   icons: {
-    icon: [
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-    ],
-    apple: [
-      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-    ],
+    icon: '/api/icon',
+    apple: '/api/icon',
   },
   appleWebApp: {
     capable: true,
