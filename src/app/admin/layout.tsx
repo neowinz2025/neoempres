@@ -74,7 +74,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         style={{ borderRight: '1px solid var(--color-border)' }}
       >
         {/* Logo / Header */}
-        <div className="p-6 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)' }}>
+        <div className="p-6 flex items-center justify-between" style={{ borderBottom: '1px solid var(--color-border)', paddingTop: 'max(1.5rem, env(safe-area-inset-top, 1.5rem))' }}>
           <h1 className="font-extrabold text-[#1e293b] text-[17px] tracking-tight">Gestão de Empréstimos</h1>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-text-muted hover:text-text-primary">
             ✕
@@ -104,7 +104,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         {/* Exit Button at Bottom */}
-        <div className="p-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+        <div className="p-4" style={{ borderTop: '1px solid var(--color-border)', paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}>
           <button 
             onClick={handleLogout} 
             className="flex items-center gap-3 w-full px-4 py-3 text-[#ef4444] hover:bg-red-50 rounded-xl transition-colors font-semibold text-sm"
@@ -122,7 +122,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main content */}
       <main className="flex-1 min-w-0 bg-[#f8fafc]">
         {/* Top bar (Mobile toggle only mostly) */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-4 h-16 bg-white lg:hidden border-b border-slate-200">
+        <header className="sticky top-0 z-30 flex items-center justify-between px-4 bg-white lg:hidden border-b border-slate-200" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', minHeight: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}

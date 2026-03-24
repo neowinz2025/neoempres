@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface Parcela {
   id: string; numero: number; valor: number; valorOriginal: number; multa: number; jurosAtraso: number
@@ -30,8 +31,29 @@ function fmtDate(d: string) {
 
 export default function ClienteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/clientes/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        router.push('/admin/clientes')
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Erro ao excluir cliente')
+      }
+    } catch {
+      alert('Erro ao excluir cliente')
+    } finally {
+      setDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/clientes/${id}`)
@@ -74,9 +96,48 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
             >
               📋 Copiar Link Portal
             </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="btn-sm"
+              style={{ background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: '1px solid var(--color-danger)', borderRadius: '0.75rem', padding: '0.4rem 0.8rem', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}
+            >
+              🗑️ Excluir
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-text-primary mb-2">Excluir Cliente</h3>
+            <p className="text-text-secondary text-sm mb-4">
+              Tem certeza que deseja excluir <strong>{cliente.nome}</strong>? Esta ação não pode ser desfeita.
+            </p>
+            {cliente.emprestimos.length > 0 && (
+              <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--color-warning-light)', border: '1px solid var(--color-warning)' }}>
+                <p className="text-sm font-medium" style={{ color: 'var(--color-warning)' }}>
+                  ⚠️ Este cliente possui {cliente.emprestimos.length} empréstimo(s). Todos serão excluídos.
+                </p>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => setShowDeleteConfirm(false)} className="btn-secondary flex-1" style={{ borderRadius: '0.75rem' }}>
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 font-semibold text-sm py-2.5 rounded-xl transition-colors"
+                style={{ background: 'var(--color-danger)', color: 'white', opacity: deleting ? 0.6 : 1, cursor: deleting ? 'not-allowed' : 'pointer' }}
+              >
+                {deleting ? 'Excluindo...' : 'Confirmar Exclusão'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
