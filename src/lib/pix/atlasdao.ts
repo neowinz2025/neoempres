@@ -56,14 +56,26 @@ export class AtlasDaoProvider implements PixProvider {
       }
     }
 
-    const data = await this.request('POST', '/pix/create', body)
+    let data = await this.request('POST', '/pix/create', body)
+
+    // AtlasDAO may nest response under 'data', 'result', or 'transaction'
+    if (data.data && typeof data.data === 'object') data = data.data
+    else if (data.result && typeof data.result === 'object') data = data.result
+    else if (data.transaction && typeof data.transaction === 'object') data = data.transaction
+
+    console.log('[AtlasDao] Full response keys:', Object.keys(data))
+    console.log('[AtlasDao] Response data:', JSON.stringify(data, null, 2))
+
+    // Try many possible field names for QR code data
+    const qrCodeImage = data.qrCode || data.qr_code || data.qrcode || data.qrCodeBase64 || data.qr_code_base64 || data.image || null
+    const qrCodeText = data.qrCodeText || data.qr_code_text || data.payload || data.pixCopiaECola || data.pix_copia_cola || data.brcode || data.emv || data.copyAndPaste || ''
 
     // AtlasDao format extrapolation
     return {
-      txId: String(data.id || data.transactionId || Math.random().toString(36).substring(7)),
-      qrCode: data.qrCode || data.qr_code || null,
-      qrCodeText: data.qrCodeText || data.qr_code_text || data.payload || '',
-      expiresAt: data.expiresAt || null,
+      txId: String(data.id || data.transactionId || data.transaction_id || data.txId || Math.random().toString(36).substring(7)),
+      qrCode: qrCodeImage,
+      qrCodeText: qrCodeText,
+      expiresAt: data.expiresAt || data.expires_at || null,
       amount: data.amount || amount,
       provider: this.name,
     }
