@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export default function ConfiguracoesPage() {
   const [configs, setConfigs] = useState<Record<string, string>>({})
@@ -19,6 +19,24 @@ export default function ConfiguracoesPage() {
   // Senha states
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+
+  // Read theme from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('theme') as 'light' | 'dark' | null
+    if (saved) setTheme(saved)
+  }, [])
+
+  const toggleTheme = useCallback(() => {
+    const next = theme === 'light' ? 'dark' : 'light'
+    setTheme(next)
+    localStorage.setItem('theme', next)
+    if (next === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark')
+    } else {
+      document.documentElement.removeAttribute('data-theme')
+    }
+  }, [theme])
 
   useEffect(() => {
     fetch('/api/configs')
@@ -102,6 +120,32 @@ export default function ConfiguracoesPage() {
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
+
+        {/* TEMA */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-200">
+                <span className="text-xl">{theme === 'dark' ? '🌙' : '☀️'}</span>
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-800 tracking-tight">Tema do Sistema</h2>
+                <p className="text-sm text-slate-500">Alternar entre tema claro e escuro</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-400' : 'text-slate-700'}`}>Claro</span>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className={`w-12 h-6 rounded-full relative transition-colors cursor-pointer border-2 ${theme === 'dark' ? 'bg-[#6366f1] border-[#6366f1]' : 'bg-slate-200 border-slate-200'}`}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${theme === 'dark' ? 'right-0.5' : 'left-0.5'}`} />
+              </button>
+              <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-700' : 'text-slate-400'}`}>Escuro</span>
+            </div>
+          </div>
+        </div>
         
         {/* LOGO DO SISTEMA */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -329,17 +373,64 @@ export default function ConfiguracoesPage() {
           </div>
         </div>
 
-        {/* Security / Sensible Configs */}
+        {/* Security / Password Change */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center border border-orange-100">
               <span className="text-xl">🔒</span>
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-800 tracking-tight">Segurança Global</h2>
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight">Segurança</h2>
+              <p className="text-sm text-slate-500">Altere sua senha de acesso ao sistema</p>
             </div>
           </div>
-          <p className="text-sm text-slate-500 mb-4">Para alterar sua própria senha, acesse o painel de perfil na aba direita (em breve).</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Nova Senha</label>
+              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none transition-all" placeholder="••••••••" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirmar Nova Senha</label>
+              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none transition-all" placeholder="••••••••" />
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 mt-3 ml-1">A senha deve ter no mínimo 6 caracteres. Deixe vazio para não alterar.</p>
+
+          {/* Biometric Registration */}
+          <div className="mt-6 pt-5 border-t border-slate-200">
+            <h3 className="text-sm font-bold text-slate-700 mb-2">Login com Biometria</h3>
+            <p className="text-xs text-slate-500 mb-3">Registre sua biometria (Touch ID, Face ID ou leitor digital) para fazer login sem senha.</p>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const optRes = await fetch('/api/auth/webauthn/register')
+                  if (!optRes.ok) throw new Error('Erro ao gerar opções de registro')
+                  const { options } = await optRes.json()
+                  
+                  const { startRegistration } = await import('@simplewebauthn/browser')
+                  const regResp = await startRegistration({ optionsJSON: options })
+                  
+                  const verifyRes = await fetch('/api/auth/webauthn/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(regResp),
+                  })
+                  if (verifyRes.ok) {
+                    showToast('Biometria registrada com sucesso!', 'success')
+                  } else {
+                    const e = await verifyRes.json()
+                    showToast(e.error || 'Erro ao registrar biometria', 'error')
+                  }
+                } catch (err) {
+                  showToast('Registro cancelado ou não suportado neste dispositivo', 'error')
+                }
+              }}
+              className="bg-[#6366f1] hover:bg-[#4f46e5] text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors inline-flex items-center gap-2"
+            >
+              🔐 Registrar Biometria
+            </button>
+          </div>
         </div>
 
         {/* Fixated Salvar Button */}

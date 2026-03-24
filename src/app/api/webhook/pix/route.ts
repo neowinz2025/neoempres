@@ -52,22 +52,28 @@ export async function POST(request: NextRequest) {
       })
 
       if (parcela && parcela.status !== 'PAGO') {
+        const previouslyPaid = parcela.valorPago || 0
+        const currentPaid = parseFloat(amount || parcela.valor)
+        const totalPaidNow = previouslyPaid + currentPaid
+
+        const isPartial = totalPaidNow < parcela.valor
+        const newStatus = isPartial ? 'PARCIAL' : 'PAGO'
+
         // Mark as paid
         await prisma.parcela.update({
           where: { id: parcela.id },
           data: {
-            status: 'PAGO',
+            status: newStatus,
             dataPagamento: new Date(),
-            valorPago: amount || parcela.valor,
+            valorPago: totalPaidNow,
           },
         })
 
         // Update saldo devedor
-        const paid = amount || parcela.valor
         await prisma.emprestimo.update({
           where: { id: parcela.emprestimoId },
           data: {
-            saldoDevedor: { decrement: paid },
+            saldoDevedor: { decrement: currentPaid },
           },
         })
 
@@ -89,11 +95,11 @@ export async function POST(request: NextRequest) {
         await prisma.log.create({
           data: {
             acao: 'WEBHOOK_PAGAMENTO',
-            detalhes: `Pagamento PIX confirmado - Parcela #${parcela.numero} - TxID: ${txId} - R$ ${paid}`,
+            detalhes: `Pagamento PIX confirmado - Parcela #${parcela.numero} - TxID: ${txId} - R$ ${currentPaid}`,
           },
         })
 
-        await sendTelegram(`💰 <b>Novo Pagamento PIX!</b>\n\n<b>Parcela:</b> #${parcela.numero}\n<b>Valor Pago:</b> R$ ${paid.toFixed(2)}\n<b>Via:</b> Webhook Automático\n\n<pre>TxID: ${txId}</pre>`)
+        await sendTelegram(`💰 <b>Novo Pagamento PIX!</b>\n\n<b>Parcela:</b> #${parcela.numero}\n<b>Valor Pago:</b> R$ ${currentPaid.toFixed(2)}\n<b>Via:</b> Webhook Automático\n\n<pre>TxID: ${txId}</pre>`)
 
         console.log(`[Webhook] Payment confirmed for parcela ${parcela.id}`)
       }

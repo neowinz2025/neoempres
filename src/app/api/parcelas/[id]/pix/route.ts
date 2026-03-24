@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { pixManager } from '@/lib/pix/manager'
 import { calcLateFees } from '@/lib/calculations'
+import QRCode from 'qrcode'
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
+    const body = await request.json().catch(() => ({}))
+    const valorPagamentoReq = body.valorPagamento ? parseFloat(body.valorPagamento) : null
 
     const parcela = await prisma.parcela.findUnique({
       where: { id },
@@ -35,6 +38,13 @@ export async function POST(
       parcela.emprestimo.jurosDiario
     )
 
+    const valorCobradoMax = Math.round((valorTotal - (parcela.valorPago || 0)) * 100) / 100
+    let valorCobrado = valorCobradoMax
+
+    if (valorPagamentoReq && valorPagamentoReq > 0 && valorPagamentoReq <= valorCobradoMax) {
+      valorCobrado = valorPagamentoReq
+    }
+
     // Update parcela with fees
     await prisma.parcela.update({
       where: { id },
@@ -43,7 +53,7 @@ export async function POST(
 
     // Create PIX charge
     const charge = await pixManager.createCharge(
-      valorTotal,
+      valorCobrado,
       `Parcela ${parcela.numero} - ${parcela.emprestimo.cliente.nome}`
     )
 
@@ -53,12 +63,22 @@ export async function POST(
       data: { pixTxId: charge.txId },
     })
 
+    // Generate QR code image if provider didn't return one
+    let qrCodeImage = charge.qrCode
+    if (!qrCodeImage && charge.qrCodeText) {
+      try {
+        qrCodeImage = await QRCode.toDataURL(charge.qrCodeText, { width: 300, margin: 2 })
+      } catch (qrErr) {
+        console.error('Error generating QR code image:', qrErr)
+      }
+    }
+
     return NextResponse.json({
       data: {
         txId: charge.txId,
-        qrCode: charge.qrCode,
+        qrCode: qrCodeImage,
         qrCodeText: charge.qrCodeText,
-        valor: valorTotal,
+        valor: valorCobrado,
         multa,
         jurosAtraso,
         provider: charge.provider,

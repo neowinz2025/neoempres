@@ -3,27 +3,31 @@
 import { useState, useEffect, use, useCallback } from 'react'
 
 interface Parcela {
-  id: string; numero: number; valor: number; vencimento: string; status: string
-  dataPagamento: string | null; valorPago: number | null
+  id: string; numero: number; valor: number; valorOriginal: number; vencimento: string; status: string
+  dataPagamento: string | null; valorPago: number | null; multa: number | null; jurosAtraso: number | null
 }
 interface Emprestimo {
-  id: string; valor: number; tipo: string; status: string; saldoDevedor: number
+  id: string; valor: number; valorTotal: number; tipo: string; status: string; saldoDevedor: number
+  jurosDiario: number; numParcelas: number; totalPago: number
   parcelas: Parcela[]
 }
 interface ClienteData {
-  nome: string; saldoDevedor: number
+  nome: string; telefone: string; saldoDevedor: number
   proximaParcela: Parcela | null
   emprestimos: Emprestimo[]
   historico: Parcela[]
 }
 
-const statusBadge: Record<string, string> = {
-  PAGO: 'badge-success', PENDENTE: 'badge-warning', ATRASADO: 'badge-danger', PARCIAL: 'badge-info',
-  ATIVO: 'badge-accent', QUITADO: 'badge-success',
-}
-
 function fmt(v: number) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v) }
 function fmtDate(d: string) { return new Date(d).toLocaleDateString('pt-BR') }
+
+const statusLabel: Record<string, string> = {
+  PENDENTE: 'Pendente', ATRASADO: 'Atrasado', PAGO: 'Pago', PARCIAL: 'Parcial',
+}
+const statusColor: Record<string, string> = {
+  PENDENTE: 'bg-amber-100 text-amber-800', ATRASADO: 'bg-red-100 text-red-700',
+  PAGO: 'bg-green-100 text-green-700', PARCIAL: 'bg-blue-100 text-blue-700',
+}
 
 export default function ClientePortalPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
@@ -31,8 +35,9 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [pixModal, setPixModal] = useState<{ qrCode: string | null; qrCodeText: string; valor: number } | null>(null)
+  const [pixAmountModal, setPixAmountModal] = useState<{ parcelaId: string; valorRestante: number } | null>(null)
+  const [pixAmountInput, setPixAmountInput] = useState('')
   const [generatingPix, setGeneratingPix] = useState<string | null>(null)
-  const [tab, setTab] = useState<'parcelas' | 'historico'>('parcelas')
   const [toastMsg, setToastMsg] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
 
@@ -54,10 +59,14 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const gerarPix = async (parcelaId: string) => {
+  const gerarPix = async (parcelaId: string, valorPagamento?: number) => {
     setGeneratingPix(parcelaId)
     try {
-      const res = await fetch(`/api/parcelas/${parcelaId}/pix`, { method: 'POST' })
+      const res = await fetch(`/api/parcelas/${parcelaId}/pix`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: valorPagamento ? JSON.stringify({ valorPagamento }) : undefined
+      })
       const json = await res.json()
       if (json.data) {
         setPixModal({
@@ -75,169 +84,230 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
   }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'radial-gradient(ellipse at top, #111827 0%, #0a0e1a 70%)' }}>
-      <div className="w-8 h-8 border-3 border-accent border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(to bottom, #0f172a 0%, #1e293b 100%)' }}>
+      <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
   if (error || !data) return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'radial-gradient(ellipse at top, #111827 0%, #0a0e1a 70%)' }}>
-      <div className="glass-card p-8 text-center max-w-sm">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom, #0f172a 0%, #1e293b 100%)' }}>
+      <div className="bg-white rounded-2xl p-8 text-center max-w-sm shadow-xl">
         <span className="text-4xl block mb-4">🔒</span>
-        <h1 className="text-xl font-bold mb-2">Link Inválido</h1>
-        <p className="text-text-muted text-sm">Este link não é válido ou expirou. Entre em contato com o administrador.</p>
+        <h1 className="text-xl font-bold text-slate-800 mb-2">Link Inválido</h1>
+        <p className="text-slate-500 text-sm">Este link não é válido ou expirou. Entre em contato com o administrador.</p>
       </div>
     </div>
   )
 
-  const pendingParcelas = data.emprestimos.flatMap(e => e.parcelas).filter(p => p.status !== 'PAGO').sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime())
+  const tipoLabel: Record<string, string> = { MENSAL: 'Mensal', SEMANAL: 'Semanal', QUINZENAL: 'Quinzenal' }
 
   return (
-    <div className="min-h-screen" style={{ background: 'radial-gradient(ellipse at top, #111827 0%, #0a0e1a 70%)' }}>
-      {/* Header */}
-      <header className="sticky top-0 z-30 px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(10,14,26,0.9)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--color-border)' }}>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
-          </div>
-          <div>
-            <h1 className="font-bold text-sm">LoanPro</h1>
-            <p className="text-xs text-text-muted">Portal do Cliente</p>
-          </div>
-        </div>
-        <span className="text-sm font-medium text-text-primary">Olá, {data.nome.split(' ')[0]} 👋</span>
-      </header>
-      
+    <div className="min-h-screen pb-10" style={{ background: 'linear-gradient(to bottom, #0f172a 0%, #1e293b 100%)' }}>
+      {/* Toast */}
       {toastMsg && (
-        <div className={`fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-full md:max-w-md z-[9999] px-4 py-4 md:py-3 rounded-xl shadow-2xl animate-in fade-in slide-in-from-top-5 border text-white text-sm font-medium text-center ${toastType === 'success' ? 'bg-[#1a1b26] border-accent' : 'bg-red-900/95 border-red-500'}`}>
+        <div className={`fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-full md:max-w-md z-[9999] px-4 py-3 rounded-xl shadow-lg border text-white text-sm font-medium text-center ${toastType === 'success' ? 'bg-emerald-600 border-emerald-500' : 'bg-red-600 border-red-500'}`}>
           {toastMsg}
         </div>
       )}
 
-      <div className="p-4 max-w-lg mx-auto space-y-4 animate-in pb-20">
-        {/* Summary */}
-        <div className="glass-card p-5" style={{ borderColor: 'rgba(99,102,241,0.3)' }}>
-          <p className="text-xs text-text-muted uppercase tracking-wide mb-1">Saldo Devedor Total</p>
-          <p className="text-3xl font-bold gradient-text">{fmt(data.saldoDevedor)}</p>
-          {data.proximaParcela && (
-            <div className="mt-3 flex items-center gap-2 text-sm">
-              <span className="text-text-muted">Próxima parcela:</span>
-              <span className="font-medium text-text-primary">{fmt(data.proximaParcela.valor)}</span>
-              <span className="text-text-muted">em</span>
-              <span className="font-medium text-accent">{fmtDate(data.proximaParcela.vencimento)}</span>
-            </div>
-          )}
-        </div>
+      <div className="max-w-2xl mx-auto p-4 space-y-4 animate-in">
+        {/* Per Emprestimo cards */}
+        {data.emprestimos.filter(e => e.status === 'ATIVO').map(emp => {
+          const pendingParcelas = emp.parcelas.filter(p => p.status !== 'PAGO').sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime())
+          const totalComJuros = emp.valorTotal
 
-        {/* Tabs */}
-        <div className="flex gap-2">
-          <button onClick={() => setTab('parcelas')} className={`btn-sm flex-1 justify-center ${tab === 'parcelas' ? 'btn-primary' : 'btn-secondary'}`}>
-            Parcelas ({pendingParcelas.length})
-          </button>
-          <button onClick={() => setTab('historico')} className={`btn-sm flex-1 justify-center ${tab === 'historico' ? 'btn-primary' : 'btn-secondary'}`}>
-            Histórico ({data.historico.length})
-          </button>
-        </div>
+          return (
+            <div key={emp.id} className="space-y-4">
+              {/* Client Header Card */}
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                {/* Name + Phone */}
+                <div className="flex items-center gap-3 p-5 pb-4">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-lg font-bold">$</span>
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-extrabold text-slate-800 tracking-tight uppercase">{data.nome}</h1>
+                    <p className="text-sm text-slate-500">{data.telefone}</p>
+                  </div>
+                </div>
 
-        {tab === 'parcelas' ? (
-          <div className="space-y-2">
-            {pendingParcelas.length === 0 ? (
-              <div className="glass-card p-8 text-center">
-                <span className="text-4xl block mb-3">🎉</span>
-                <p className="font-semibold">Tudo em dia!</p>
-                <p className="text-text-muted text-sm mt-1">Nenhuma parcela pendente</p>
+                {/* Three Stat Cards */}
+                <div className="grid grid-cols-3 gap-3 px-5 pb-4">
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                    <p className="text-[11px] font-semibold text-green-700 uppercase tracking-wider">Valor do Empréstimo</p>
+                    <p className="text-lg font-bold text-green-800 mt-1">{fmt(emp.valor)}</p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                    <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider">Total Pago</p>
+                    <p className="text-lg font-bold text-blue-800 mt-1">{fmt(emp.totalPago)}</p>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                    <p className="text-[11px] font-semibold text-red-700 uppercase tracking-wider">Total Restante</p>
+                    <p className="text-lg font-bold text-red-800 mt-1">{fmt(emp.saldoDevedor)}</p>
+                  </div>
+                </div>
+
+                {/* Detail Row */}
+                <div className="grid grid-cols-4 gap-2 px-5 pb-5 text-xs text-slate-600">
+                  <div>
+                    <p className="text-slate-400 font-medium">Total com Juros</p>
+                    <p className="font-semibold text-slate-700">{fmt(totalComJuros)}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-medium">Taxa de Juros</p>
+                    <p className="font-semibold text-slate-700">{emp.jurosDiario}%</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-medium">Parcelas</p>
+                    <p className="font-semibold text-slate-700">{emp.numParcelas}x</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 font-medium">Tipo</p>
+                    <p className="font-semibold text-slate-700">{tipoLabel[emp.tipo] || emp.tipo}</p>
+                  </div>
+                </div>
               </div>
-            ) : (
-              pendingParcelas.map((p) => (
-                <div key={p.id} className="glass-card p-4" style={p.status === 'ATRASADO' ? { borderColor: 'rgba(239,68,68,0.3)' } : {}}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">Parcela {p.numero}</span>
-                      <span className={`badge ${statusBadge[p.status]}`}>{p.status}</span>
-                    </div>
-                    <span className="font-mono font-semibold text-text-primary">{fmt(p.valor)}</span>
+
+              {/* Parcelas Card */}
+              <div className="bg-white rounded-2xl shadow-lg p-5">
+                <h2 className="text-lg font-bold text-slate-800 mb-4">Parcelas</h2>
+
+                {pendingParcelas.length === 0 ? (
+                  <div className="text-center py-6">
+                    <span className="text-3xl block mb-2">🎉</span>
+                    <p className="font-semibold text-slate-700">Tudo em dia!</p>
+                    <p className="text-slate-400 text-sm">Nenhuma parcela pendente</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-text-muted">Vence: {fmtDate(p.vencimento)}</span>
-                    <button
-                      onClick={() => gerarPix(p.id)}
-                      disabled={generatingPix === p.id}
-                      className="btn-primary btn-sm"
-                    >
-                      {generatingPix === p.id ? (
-                        <span className="flex items-center gap-1">
-                          <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Gerando...
-                        </span>
-                      ) : (
-                        'Pagar PIX'
-                      )}
-                    </button>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingParcelas.map((p) => {
+                      const totalParcelas = emp.numParcelas
+                      const restante = p.valor - (p.valorPago || 0)
+                      return (
+                        <div key={p.id} className="border border-slate-200 rounded-xl p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-sm text-slate-800">Parcela {p.numero}/{totalParcelas}</span>
+                              <span className="text-slate-400">⏱</span>
+                            </div>
+                            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${statusColor[p.status] || 'bg-slate-100 text-slate-600'}`}>
+                              {statusLabel[p.status] || p.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-sm text-slate-600 mb-3">
+                            <span>💲 {fmt(restante)}</span>
+                            <span>📅 {fmtDate(p.vencimento)}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            {/* Pagar Completo */}
+                            <button
+                              onClick={() => gerarPix(p.id, restante)}
+                              disabled={generatingPix === p.id}
+                              className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                              <span>📱</span>
+                              {generatingPix === p.id ? 'Gerando...' : 'Pagar Completo'}
+                            </button>
+                            {/* Pagar só Juros — opens amount modal */}
+                            <button
+                              onClick={() => {
+                                setPixAmountInput(restante.toFixed(2))
+                                setPixAmountModal({ parcelaId: p.id, valorRestante: restante })
+                              }}
+                              disabled={generatingPix === p.id}
+                              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                              <span>📱</span> Pagar só Juros
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {data.historico.length === 0 ? (
-              <div className="glass-card p-8 text-center text-text-muted">Nenhum pagamento registrado</div>
-            ) : (
-              data.historico.map((p) => (
-                <div key={p.id} className="glass-card p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">Parcela {p.numero}</span>
-                        <span className="badge badge-success">PAGO</span>
-                      </div>
-                      <span className="text-xs text-text-muted">{p.dataPagamento ? fmtDate(p.dataPagamento) : '—'}</span>
-                    </div>
-                    <span className="font-mono text-green-400">{fmt(p.valorPago || p.valor)}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
 
-      {/* PIX Modal */}
+      {/* PIX Amount Modal */}
+      {pixAmountModal && (
+        <div className="modal-overlay" onClick={() => setPixAmountModal(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-slate-800 mb-2 text-center">Valor do Pagamento</h2>
+            <p className="text-sm text-slate-500 text-center mb-4">
+              Informe o valor que deseja pagar. O saldo restante é de <strong className="text-slate-800">{fmt(pixAmountModal.valorRestante)}</strong>.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1 text-slate-600 text-center">Valor (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={pixAmountInput}
+                onChange={(e) => setPixAmountInput(e.target.value)}
+                className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-center text-xl font-bold font-mono tracking-wider focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setPixAmountModal(null)} className="flex-1 py-2.5 border border-slate-300 text-slate-600 rounded-xl font-semibold text-sm hover:bg-slate-50 transition-colors">
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  const val = parseFloat(pixAmountInput.replace(',', '.'))
+                  if (isNaN(val) || val <= 0 || val > pixAmountModal.valorRestante) {
+                    showToast('Valor inválido ou maior que o restante.', 'error')
+                    return
+                  }
+                  setPixAmountModal(null)
+                  gerarPix(pixAmountModal.parcelaId, val)
+                }}
+                className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold text-sm transition-colors"
+              >
+                Gerar PIX
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PIX QR Code Modal */}
       {pixModal && (
         <div className="modal-overlay" onClick={() => setPixModal(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold mb-2 text-center">Pagamento PIX</h2>
-            <p className="text-center text-2xl font-bold gradient-text mb-4">{fmt(pixModal.valor)}</p>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-slate-800 mb-2 text-center">Pagamento PIX</h2>
+            <p className="text-center text-2xl font-bold text-emerald-600 mb-4">{fmt(pixModal.valor)}</p>
 
             {pixModal.qrCode && (
               <div className="flex justify-center mb-4">
-                <div className="bg-white p-3 rounded-xl">
+                <div className="bg-white p-3 rounded-xl border border-slate-200">
                   <img src={pixModal.qrCode} alt="QR Code PIX" className="w-48 h-48" />
                 </div>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Código Copia e Cola</label>
+              <label className="block text-sm font-medium text-slate-600 mb-1">Código Copia e Cola</label>
               <div className="flex gap-2">
-                <input type="text" readOnly value={pixModal.qrCodeText} className="input-field text-xs font-mono" />
+                <input type="text" readOnly value={pixModal.qrCodeText} className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-600" />
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(pixModal.qrCodeText)
                     showToast('Código PIX copiado com sucesso!', 'success')
                   }}
-                  className="btn-primary btn-sm flex-shrink-0"
+                  className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-semibold transition-colors flex-shrink-0"
                 >
                   📋
                 </button>
               </div>
             </div>
 
-            <p className="text-xs text-text-muted text-center mt-4">
+            <p className="text-xs text-slate-400 text-center mt-4">
               Após o pagamento, a confirmação é automática via PIX.
             </p>
 
-            <button onClick={() => setPixModal(null)} className="btn-secondary w-full justify-center mt-4">
+            <button onClick={() => setPixModal(null)} className="w-full mt-4 py-2.5 border border-slate-300 text-slate-600 rounded-xl font-semibold text-sm hover:bg-slate-50 transition-colors">
               Fechar
             </button>
           </div>

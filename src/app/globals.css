@@ -27,6 +27,50 @@
   --font-mono: 'JetBrains Mono', monospace;
 }
 
+/* Dark Theme Override */
+[data-theme="dark"] {
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-bg-card: #1e293b;
+  --color-bg-card-hover: #334155;
+  --color-bg-input: #1e293b;
+  --color-border: #334155;
+  --color-border-focus: #10b981;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+}
+
+[data-theme="dark"] body {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .glass-card {
+  background: var(--color-bg-card);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .modal-content {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .data-table td {
+  color: var(--color-text-secondary);
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .data-table th {
+  color: var(--color-text-muted);
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .data-table tr:hover td {
+  background: var(--color-bg-card-hover);
+}
+
 @layer base {
   * {
     box-sizing: border-box;

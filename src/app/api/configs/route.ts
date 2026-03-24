@@ -7,9 +7,17 @@ export async function GET(request: NextRequest) {
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   try {
+    const sensitivePatterns = ['KEY', 'TOKEN', 'SECRET', 'PASSWORD']
     const configsList = await prisma.config.findMany()
     const configs: Record<string, string> = {}
-    configsList.forEach(c => { configs[c.key] = c.value })
+    configsList.forEach(c => {
+      const isSensitive = sensitivePatterns.some(p => c.key.toUpperCase().includes(p))
+      if (isSensitive && c.value.length > 4) {
+        configs[c.key] = '••••••••' + c.value.slice(-4)
+      } else {
+        configs[c.key] = c.value
+      }
+    })
     return NextResponse.json({ data: configs })
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao buscar configurações' }, { status: 500 })

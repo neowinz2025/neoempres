@@ -106,6 +106,54 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          {/* Biometric login button */}
+          {typeof window !== 'undefined' && window.PublicKeyCredential && (
+            <button
+              type="button"
+              onClick={async () => {
+                setError('')
+                setLoading(true)
+                try {
+                  // 1. Get authentication options
+                  const optRes = await fetch('/api/auth/webauthn/login')
+                  if (!optRes.ok) {
+                    const e = await optRes.json()
+                    setError(e.error || 'Nenhuma biometria registrada')
+                    setLoading(false)
+                    return
+                  }
+                  const { options } = await optRes.json()
+                  
+                  // 2. Start browser WebAuthn authentication
+                  const { startAuthentication } = await import('@simplewebauthn/browser')
+                  const authResp = await startAuthentication({ optionsJSON: options })
+                  
+                  // 3. Verify with server
+                  const verifyRes = await fetch('/api/auth/webauthn/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(authResp),
+                  })
+                  if (verifyRes.ok) {
+                    router.push('/admin')
+                  } else {
+                    const e = await verifyRes.json()
+                    setError(e.error || 'Falha na autenticação biométrica')
+                  }
+                } catch (err) {
+                  setError('Biometria cancelada ou não suportada')
+                } finally {
+                  setLoading(false)
+                }
+              }}
+              disabled={loading}
+              className="w-full mt-3 py-3 border border-gray-600 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-white/5 transition-colors"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
+              🔐 Entrar com Biometria
+            </button>
+          )}
         </div>
 
         <p className="text-center text-xs text-text-muted mt-6">

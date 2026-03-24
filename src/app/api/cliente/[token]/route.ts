@@ -40,14 +40,19 @@ export async function GET(
   return NextResponse.json({
     data: {
       nome: cliente.nome,
+      telefone: cliente.telefone || '',
       saldoDevedor: Math.round(totalDevedor * 100) / 100,
       proximaParcela: proximaParcela || null,
       emprestimos: cliente.emprestimos.map((e) => ({
         id: e.id,
         valor: e.valor,
+        valorTotal: e.saldoDevedor + e.parcelas.filter(p => p.status === 'PAGO' || p.status === 'PARCIAL').reduce((s, p) => s + (p.valorPago || 0), 0),
         tipo: e.tipo,
         status: e.status,
         saldoDevedor: e.saldoDevedor,
+        jurosDiario: e.jurosDiario,
+        numParcelas: e.parcelas.length,
+        totalPago: e.parcelas.reduce((s, p) => s + (p.valorPago || 0), 0),
         parcelas: e.parcelas,
       })),
       historico: historico.slice(0, 20),

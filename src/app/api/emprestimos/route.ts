@@ -76,8 +76,8 @@ export async function POST(request: NextRequest) {
         numParcelas,
         valorParcela: simulacao.valorParcela,
         saldoDevedor: simulacao.totalPago,
-        multaPercent: multaPercent || 2.0,
-        jurosDiario: jurosDiario || 0.033,
+        multaPercent: multaPercent ?? 2.0,
+        jurosDiario: jurosDiario ?? 0.033,
         parcelas: {
           create: simulacao.parcelas.map((p) => ({
             numero: p.numero,
