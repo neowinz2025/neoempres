@@ -61,8 +61,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Sanitize inputs
+    const sanitizedNome = nome.trim().replace(/<[^>]*>/g, '').substring(0, 200)
+    const sanitizedTelefone = telefone.trim().replace(/[^0-9+()-\s]/g, '').substring(0, 20)
+
+    if (!sanitizedNome || !sanitizedTelefone) {
+      return NextResponse.json(
+        { error: 'Nome ou telefone inválido' },
+        { status: 400 }
+      )
+    }
+
     const cliente = await prisma.cliente.create({
-      data: { nome, telefone },
+      data: { nome: sanitizedNome, telefone: sanitizedTelefone },
     })
 
     await prisma.log.create({

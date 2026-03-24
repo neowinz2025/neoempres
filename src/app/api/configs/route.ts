@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   const session = await getSession()
-  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  if (!session || session.role !== 'ADMIN') return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   try {
     const sensitivePatterns = ['KEY', 'TOKEN', 'SECRET', 'PASSWORD']
@@ -36,7 +36,9 @@ export async function PUT(request: NextRequest) {
     const updates = []
     
     for (const [key, value] of Object.entries(configData)) {
-      if (typeof value === 'string') {
+      if (typeof value === 'string' && !value.startsWith('••••')) {
+        // Validate key format (only alphanumeric, underscores)
+        if (!/^[A-Za-z0-9_]+$/.test(key)) continue
         updates.push(
           prisma.config.upsert({
             where: { key },

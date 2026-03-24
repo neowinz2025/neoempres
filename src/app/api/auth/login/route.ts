@@ -2,8 +2,33 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { comparePassword, generateToken } from '@/lib/auth'
 
+// Simple in-memory rate limiting for login attempts
+const loginAttempts = new Map<string, { count: number; resetAt: number }>()
+const MAX_ATTEMPTS = 5
+const WINDOW_MS = 60_000 // 1 minute
+
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const now = Date.now()
+    const record = loginAttempts.get(ip)
+
+    if (record) {
+      if (now > record.resetAt) {
+        loginAttempts.set(ip, { count: 1, resetAt: now + WINDOW_MS })
+      } else if (record.count >= MAX_ATTEMPTS) {
+        const retryAfter = Math.ceil((record.resetAt - now) / 1000)
+        return NextResponse.json(
+          { error: `Muitas tentativas. Tente novamente em ${retryAfter}s.` },
+          { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+        )
+      } else {
+        record.count++
+      }
+    } else {
+      loginAttempts.set(ip, { count: 1, resetAt: now + WINDOW_MS })
+    }
     const { email, password } = await request.json()
 
     if (!email || !password) {

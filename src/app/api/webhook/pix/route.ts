@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!isValid && (fdSignature || atlasSignature)) {
-      console.error('[Webhook] Invalid signature')
+    if (!isValid) {
+      console.error('[Webhook] Invalid or missing signature')
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 

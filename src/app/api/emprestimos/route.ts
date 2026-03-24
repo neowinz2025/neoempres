@@ -57,6 +57,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate numerical ranges
+    if (typeof valor !== 'number' || valor <= 0 || valor > 10_000_000) {
+      return NextResponse.json({ error: 'Valor inválido' }, { status: 400 })
+    }
+    if (typeof taxaJuros !== 'number' || taxaJuros < 0 || taxaJuros > 100) {
+      return NextResponse.json({ error: 'Taxa de juros inválida' }, { status: 400 })
+    }
+    if (typeof numParcelas !== 'number' || numParcelas < 1 || numParcelas > 360) {
+      return NextResponse.json({ error: 'Número de parcelas inválido' }, { status: 400 })
+    }
+    if (!['PRICE', 'SIMPLE', 'BULLET'].includes(tipo)) {
+      return NextResponse.json({ error: 'Tipo de empréstimo inválido' }, { status: 400 })
+    }
+
     const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } })
     if (!cliente) {
       return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
