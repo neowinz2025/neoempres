@@ -58,23 +58,40 @@ export class AtlasDaoProvider implements PixProvider {
 
     let data = await this.request('POST', '/pix/create', body)
 
-    // AtlasDAO may nest response under 'data', 'result', or 'transaction'
+    // AtlasDAO may nest response under 'data'
     if (data.data && typeof data.data === 'object') data = data.data
-    else if (data.result && typeof data.result === 'object') data = data.result
-    else if (data.transaction && typeof data.transaction === 'object') data = data.transaction
 
-    console.log('[AtlasDao] Full response keys:', Object.keys(data))
-    console.log('[AtlasDao] Response data:', JSON.stringify(data, null, 2))
+    const txId = String(data.id || data.transactionId || data.transaction_id || data.txId || '')
 
-    // Try many possible field names for QR code data
-    const qrCodeImage = data.qrCode || data.qr_code || data.qrcode || data.qrCodeBase64 || data.qr_code_base64 || data.image || null
-    const qrCodeText = data.qrCodeText || data.qr_code_text || data.payload || data.pixCopiaECola || data.pix_copia_cola || data.brcode || data.emv || data.copyAndPaste || ''
+    console.log('[AtlasDao] Create response - txId:', txId)
 
-    // AtlasDao format extrapolation
+    // The CREATE endpoint does NOT return QR code data.
+    // We must call the STATUS endpoint to get qrCode (text) and qrCodeImage (base64).
+    let qrCodeImage: string | null = null
+    let qrCodeText = ''
+
+    if (txId) {
+      try {
+        // Small delay to ensure the transaction is ready
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        let statusData = await this.request('GET', `/pix/status/${txId}`)
+        if (statusData.data && typeof statusData.data === 'object') statusData = statusData.data
+
+        console.log('[AtlasDao] Status response keys:', Object.keys(statusData))
+
+        // Per API docs: qrCode = PIX payload text, qrCodeImage = base64 image
+        qrCodeText = statusData.qrCode || statusData.qr_code || statusData.payload || ''
+        qrCodeImage = statusData.qrCodeImage || statusData.qr_code_image || null
+      } catch (statusErr) {
+        console.error('[AtlasDao] Failed to fetch status for QR code:', statusErr)
+      }
+    }
+
     return {
-      txId: String(data.id || data.transactionId || data.transaction_id || data.txId || Math.random().toString(36).substring(7)),
+      txId,
       qrCode: qrCodeImage,
-      qrCodeText: qrCodeText,
+      qrCodeText,
       expiresAt: data.expiresAt || data.expires_at || null,
       amount: data.amount || amount,
       provider: this.name,
