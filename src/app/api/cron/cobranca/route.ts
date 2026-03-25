@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendWhatsApp } from '@/lib/notifications/whatsapp'
+import { sendTelegram } from '@/lib/notifications/telegram'
 import { differenceInDays } from 'date-fns'
 import { calcLateFees, formatCurrency } from '@/lib/calculations'
 
@@ -14,6 +15,7 @@ export async function GET(request: NextRequest) {
 
   const now = new Date()
   const results = { reminders: 0, charges: 0, urgents: 0, finals: 0, errors: 0 }
+  const atrasadosList: { cliente: string; numero: number; valor: number; dias: number }[] = []
 
   try {
     // Get all pending/overdue installments with client info
@@ -63,6 +65,16 @@ export async function GET(request: NextRequest) {
         results.finals++
       }
 
+      if (diasDiff < 0) {
+        const { valorTotal } = calcLateFees(parcela.valorOriginal, vencimento, parcela.emprestimo.multaPercent, parcela.emprestimo.jurosDiario)
+        atrasadosList.push({
+          cliente: cliente.nome,
+          numero: parcela.numero,
+          valor: valorTotal,
+          dias: Math.abs(diasDiff)
+        })
+      }
+
       if (mensagem && cliente.telefone) {
         try {
           await sendWhatsApp(cliente.telefone, mensagem)
@@ -100,10 +112,22 @@ export async function GET(request: NextRequest) {
       data: { status: 'ATRASADO' },
     })
 
+    // Send Telegram Notification to Admin if there are overdue installments
+    if (atrasadosList.length > 0) {
+      let tMsg = `⚠️ <b>Relatório de Atrasos - ${now.toLocaleDateString('pt-BR')}</b>\n\n`
+      atrasadosList.sort((a, b) => b.dias - a.dias).forEach(item => {
+        tMsg += `• <b>${item.cliente}</b> (Parc #${item.numero})\n`
+        tMsg += `  Atraso: ${item.dias} dias | Valor: ${formatCurrency(item.valor)}\n\n`
+      })
+      tMsg += `<i>Total de ${atrasadosList.length} parcelas em aberto.</i>`
+      
+      await sendTelegram(tMsg)
+    }
+
     await prisma.log.create({
       data: {
         acao: 'CRON_COBRANCA',
-        detalhes: `Cobrança automática: ${JSON.stringify(results)}`,
+        detalhes: `Cobrança automática: ${JSON.stringify(results)}. Atrasos detectados: ${atrasadosList.length}`,
       },
     })
 
