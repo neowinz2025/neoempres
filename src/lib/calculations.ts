@@ -85,23 +85,26 @@ export function calcSimple(
 export function calcBullet(
   valor: number,
   taxa: number,
-  prazoMeses: number,
+  numParcelas: number,
   dataInicio: Date = new Date(),
   frequencia: Frequencia = 'MENSAL'
 ): SimulacaoResult {
   const i = taxa / 100
-  const totalJuros = Math.round(valor * i * prazoMeses * 100) / 100
+  const jurosMensal = Math.round(valor * i * 100) / 100
+  const totalJuros = Math.round(jurosMensal * numParcelas * 100) / 100
   const totalPago = Math.round((valor + totalJuros) * 100) / 100
 
-  const parcelas: ParcelaCalc[] = [
-    {
-      numero: 1,
-      valor: totalPago,
-      vencimento: getVencimento(dataInicio, prazoMeses, frequencia),
-    },
-  ]
+  const parcelas: ParcelaCalc[] = []
+  for (let n = 1; n <= numParcelas; n++) {
+    const isUltima = n === numParcelas
+    parcelas.push({
+      numero: n,
+      valor: isUltima ? Math.round((valor + jurosMensal) * 100) / 100 : jurosMensal,
+      vencimento: getVencimento(dataInicio, n, frequencia),
+    })
+  }
 
-  return { valorParcela: totalPago, totalPago, totalJuros, parcelas }
+  return { valorParcela: jurosMensal, totalPago, totalJuros, parcelas }
 }
 
 /**

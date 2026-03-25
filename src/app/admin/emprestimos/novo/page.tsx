@@ -57,6 +57,9 @@ export default function NovoEmprestimoPage() {
       } else if (tipo === 'SIMPLE') {
         valorParcela = v / n + v * i
         totalPago = valorParcela * n
+      } else if (tipo === 'BULLET') {
+        valorParcela = v * i
+        totalPago = v + (valorParcela * n)
       } else {
         totalPago = v + v * i * n
         valorParcela = totalPago
@@ -77,7 +80,7 @@ export default function NovoEmprestimoPage() {
       if (tipo === 'SIMPLE') {
         i = (pmt - v / n) / v;
       } else if (tipo === 'BULLET') {
-        i = (pmt - v) / (v * n);
+        i = pmt / v;
       } else {
         // Price - Bisection Method
         let low = 0.000001;
@@ -91,9 +94,9 @@ export default function NovoEmprestimoPage() {
       
       const t = i * 100;
       setSimulacao({
-        valorParcela: Math.round(tipo === 'BULLET' ? pmt : pmt * 100) / 100,
-        totalPago: Math.round(tipo === 'BULLET' ? pmt * 100 : pmt * n * 100) / 100,
-        totalJuros: Math.round(tipo === 'BULLET' ? (pmt - v) * 100 : (pmt * n - v) * 100) / 100,
+        valorParcela: Math.round(tipo === 'BULLET' ? pmt * 100 : pmt * 100) / 100,
+        totalPago: Math.round(tipo === 'BULLET' ? (v + pmt * n) * 100 : pmt * n * 100) / 100,
+        totalJuros: Math.round(tipo === 'BULLET' ? (pmt * n) * 100 : (pmt * n - v) * 100) / 100,
         taxaCalculada: t
       })
     }
@@ -166,7 +169,7 @@ export default function NovoEmprestimoPage() {
             ) : (
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">
-                  {tipo === 'BULLET' ? 'Valor Final a Pagar (R$)' : 'Valor da Parcela (R$)'}
+                  {tipo === 'BULLET' ? 'Juros Mensal (R$)' : 'Valor da Parcela (R$)'}
                 </label>
                 <input type="number" value={valorParcelaInput} onChange={(e) => setValorParcelaInput(e.target.value)} className="input-field" placeholder="0.00" step="0.01" min="0.1" required />
               </div>
@@ -184,7 +187,7 @@ export default function NovoEmprestimoPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">Parcelas</label>
-              <input type="number" value={numParcelas} onChange={(e) => setNumParcelas(e.target.value)} className="input-field" placeholder="12" min="1" max="120" required />
+              <input type="number" value={numParcelas} onChange={(e) => setNumParcelas(e.target.value)} className="input-field" placeholder="12" min="1" max="360" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">Frequência</label>
