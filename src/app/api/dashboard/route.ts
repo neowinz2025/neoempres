@@ -49,28 +49,31 @@ export async function GET() {
       const vPago = p.valorPago || 0
       const vOriginal = p.valorOriginal || 0
       const e = p.emprestimo
-      
-      let baseInterest = 0
+      if (!e) continue
+
+      const i = (e.taxaJuros || 0) / 100
+      let parcelaInterest = 0
+
       if (e.tipo === 'BULLET') {
-        const i = e.taxaJuros / 100
-        baseInterest = Math.round(e.valor * i * 100) / 100
+        // In Bullet, every installment's original value is just the interest (except the last one which has principal too)
+        // But our calcBullet returns valorParcela = interest.
+        // So interest is simply valorOriginal.
+        // Wait, to be safe: interest = valor * i
+        parcelaInterest = e.valor * i
       } else if (e.tipo === 'SIMPLE') {
-        const i = e.taxaJuros / 100
-        baseInterest = Math.round(e.valor * i * 100) / 100
+        // interest = Principal * rate
+        parcelaInterest = e.valor * i
       } else if (e.tipo === 'PRICE') {
-        // Approximate interest for Price (average)
-        // PMT = Principal * [i(1+i)^n] / [(1+i)^n - 1]
-        // Hard to get exact per installment without full table, 
-        // using (TotalPaid - Principal) / n as a simplified estimate per installment
-        const i = e.taxaJuros / 100
-        const n = e.numParcelas
+        // For Price, we can approximate: TotalInterest / numParcelas
+        // Or PMT - (Principal / numParcelas) -> Not accurate but better than 0
+        const n = e.numParcelas || 1
         const pmt = e.valor * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1)
         const totalJurosPrevisto = (pmt * n) - e.valor
-        baseInterest = totalJurosPrevisto / n
+        parcelaInterest = totalJurosPrevisto / n
       }
-      
+
       const lateFees = Math.max(0, vPago - vOriginal)
-      jurosRecebidos += baseInterest + lateFees
+      jurosRecebidos += (parcelaInterest + lateFees)
     }
 
     const totalAtrasadas = parcelasAtrasadas.length + parcelasPendentes.length
