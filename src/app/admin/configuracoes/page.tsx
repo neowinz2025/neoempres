@@ -108,7 +108,10 @@ export default function ConfiguracoesPage() {
     <div className="max-w-4xl mx-auto space-y-6 pb-24">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className={`fixed top-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-full md:max-w-md z-[9999] px-4 py-3 rounded-xl shadow-lg border text-white text-sm font-medium text-center transition-all ${toastType === 'success' ? 'bg-[#10b981] border-[#059669]' : 'bg-[#ef4444] border-[#dc2626]'}`}>
+        <div 
+          className={`fixed left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-full md:max-w-md z-[9999] px-4 py-3 rounded-xl shadow-lg border text-white text-sm font-medium text-center transition-all ${toastType === 'success' ? 'bg-[#10b981] border-[#059669]' : 'bg-[#ef4444] border-[#dc2626]'}`}
+          style={{ top: 'calc(1rem + env(safe-area-inset-top, 0px))' }}
+        >
           {toastMsg}
         </div>
       )}
@@ -404,8 +407,23 @@ export default function ConfiguracoesPage() {
               type="button"
               onClick={async () => {
                 try {
+                  // Check if WebAuthn is supported
+                  if (!window.PublicKeyCredential) {
+                    showToast('WebAuthn não suportado neste navegador. Use Safari no iPhone.', 'error')
+                    return
+                  }
+                  const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+                  if (!available) {
+                    showToast('Biometria não disponível neste dispositivo.', 'error')
+                    return
+                  }
+
                   const optRes = await fetch('/api/auth/webauthn/register')
-                  if (!optRes.ok) throw new Error('Erro ao gerar opções de registro')
+                  if (!optRes.ok) {
+                    const errData = await optRes.json().catch(() => ({}))
+                    showToast(errData.error || `Erro do servidor (${optRes.status})`, 'error')
+                    return
+                  }
                   const { options } = await optRes.json()
                   
                   const { startRegistration } = await import('@simplewebauthn/browser')
@@ -417,13 +435,19 @@ export default function ConfiguracoesPage() {
                     body: JSON.stringify(regResp),
                   })
                   if (verifyRes.ok) {
-                    showToast('Biometria registrada com sucesso!', 'success')
+                    showToast('✅ Biometria registrada! Use "Face ID / Biometria" no login.', 'success')
                   } else {
                     const e = await verifyRes.json()
-                    showToast(e.error || 'Erro ao registrar biometria', 'error')
+                    showToast(e.error || 'Erro ao verificar registro', 'error')
                   }
-                } catch (err) {
-                  showToast('Registro cancelado ou não suportado neste dispositivo', 'error')
+                } catch (err: unknown) {
+                  const msg = err instanceof Error ? err.message : String(err)
+                  console.error('WebAuthn registration error:', err)
+                  if (msg.includes('AbortError') || msg.includes('NotAllowedError') || msg.includes('cancelled')) {
+                    showToast('Registro cancelado pelo usuário', 'error')
+                  } else {
+                    showToast(`Erro: ${msg}`, 'error')
+                  }
                 }
               }}
               className="bg-[#6366f1] hover:bg-[#4f46e5] text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors inline-flex items-center gap-2"

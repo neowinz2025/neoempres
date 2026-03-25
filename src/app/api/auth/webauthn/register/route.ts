@@ -2,16 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { generateRegistrationOptions, verifyRegistrationResponse } from '@simplewebauthn/server'
+import { headers } from 'next/headers'
 
 const rpName = 'LoanPro'
-const rpID = process.env.WEBAUTHN_RP_ID || 'localhost'
-const origin = process.env.WEBAUTHN_ORIGIN || `https://${rpID}`
+
+function getRpConfig(host: string) {
+  const rpID = host.split(':')[0] // Remove port
+  const protocol = rpID === 'localhost' ? 'http' : 'https'
+  const origin = `${protocol}://${host}`
+  return { rpID, origin }
+}
 
 // GET: generate registration options
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getSession()
     if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+    const headersList = await headers()
+    const host = headersList.get('host') || 'localhost'
+    const { rpID } = getRpConfig(host)
 
     const existingCreds = await prisma.webAuthnCredential.findMany({
       where: { userId: session.userId },
@@ -57,6 +67,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const challenge = request.cookies.get('webauthn-challenge')?.value
     if (!challenge) return NextResponse.json({ error: 'Challenge expirado' }, { status: 400 })
+
+    const headersList = await headers()
+    const host = headersList.get('host') || 'localhost'
+    const { rpID, origin } = getRpConfig(host)
 
     const verification = await verifyRegistrationResponse({
       response: body,
