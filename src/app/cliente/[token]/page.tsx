@@ -8,7 +8,7 @@ interface Parcela {
 }
 interface Emprestimo {
   id: string; valor: number; valorTotal: number; tipo: string; status: string; saldoDevedor: number
-  jurosDiario: number; numParcelas: number; totalPago: number
+  jurosDiario: number; taxaJuros: number; numParcelas: number; totalPago: number
   parcelas: Parcela[]
 }
 interface ClienteData {
@@ -155,7 +155,7 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
                   </div>
                   <div>
                     <p className="text-slate-400 font-medium">Taxa de Juros</p>
-                    <p className="font-semibold text-slate-700">{emp.jurosDiario}%</p>
+                    <p className="font-semibold text-slate-700">{emp.taxaJuros || emp.jurosDiario}%</p>
                   </div>
                   <div>
                     <p className="text-slate-400 font-medium">Parcelas</p>

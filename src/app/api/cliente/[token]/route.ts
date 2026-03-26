@@ -50,6 +50,7 @@ export async function GET(
         tipo: e.tipo,
         status: e.status,
         saldoDevedor: e.saldoDevedor,
+        taxaJuros: e.taxaJuros,
         jurosDiario: e.jurosDiario,
         numParcelas: e.parcelas.length,
         totalPago: e.parcelas.reduce((s, p) => s + (p.valorPago || 0), 0),
