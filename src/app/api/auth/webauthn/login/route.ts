@@ -30,10 +30,10 @@ export async function GET(request: NextRequest) {
     const options = await generateAuthenticationOptions({
       rpID,
       userVerification: 'preferred',
-      allowCredentials: (allCreds.map(c => ({
-        id: Buffer.from(c.credentialId, 'base64url'),
+      allowCredentials: allCreds.map(c => ({
+        id: c.credentialId,
         transports: c.transports ? (JSON.parse(c.transports) as any[]).filter(t => t !== 'hybrid') : undefined,
-      })) as any),
+      })),
     })
 
     const response = NextResponse.json({ options })

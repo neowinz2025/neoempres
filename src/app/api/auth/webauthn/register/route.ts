@@ -44,10 +44,10 @@ export async function GET(request: NextRequest) {
       userName: session.email,
       userDisplayName: session.name || session.email,
       attestationType: 'none',
-      excludeCredentials: (existingCreds.map((c) => ({
-        id: Buffer.from(c.credentialId, 'base64url'),
+      excludeCredentials: existingCreds.map((c) => ({
+        id: c.credentialId,
         transports: c.transports ? (JSON.parse(c.transports) as any[]) : undefined,
-      })) as any),
+      })),
       authenticatorSelection: {
         residentKey: 'preferred',
         userVerification: 'preferred',
