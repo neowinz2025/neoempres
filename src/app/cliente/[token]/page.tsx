@@ -246,12 +246,14 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
                               {p.dataPagamento ? `Pago em ${fmtDate(p.dataPagamento)}` : 'Confirmado'} • {fmt(p.valorPago || 0)}
                             </div>
                           </div>
-                          <button
-                            onClick={() => window.open(`/comprovante/${p.id}?token=${token}`, '_blank')}
-                            className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-3 py-2 rounded-lg text-[11px] font-bold transition-all shadow-sm flex items-center gap-1.5"
-                          >
-                            🧾 Recibo
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => window.open(`/comprovante/${p.id}?token=${token}`, '_blank')}
+                              className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                            >
+                              🧾 Recibo
+                            </button>
+                          </div>
                         </div>
                       ))}
                   </div>

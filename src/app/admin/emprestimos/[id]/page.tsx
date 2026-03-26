@@ -270,13 +270,26 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
                         </button>
                       )}
                       {(p.status === 'PAGO' || p.status === 'PARCIAL') && (
-                        <button
-                          onClick={() => window.open(`/comprovante/${p.id}`, '_blank')}
-                          className="btn-sm transition-colors text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 px-3 py-1 rounded-lg font-bold"
-                          title="Ver Recibo"
-                        >
-                          🧾
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => window.open(`/comprovante/${p.id}${emp.cliente.token ? `?token=${emp.cliente.token}` : ''}`, '_blank')}
+                            className="btn-sm transition-colors text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 px-3 py-1 rounded-lg font-bold"
+                            title="Ver Recibo"
+                          >
+                            🧾
+                          </button>
+                          <button
+                            onClick={() => {
+                              const link = `${window.location.origin}/comprovante/${p.id}?token=${emp.cliente.token}`
+                              const msg = encodeURIComponent(`Olá ${emp.cliente.nome}! 👋\n\nSegue o comprovante de pagamento da parcela ${p.numero}/${emp.numParcelas}.\n\nValor: ${fmt(p.valorPago || 0)}\nData: ${fmtDate(p.dataPagamento || '')}\n\nLink: ${link}`)
+                              window.open(`https://wa.me/55${emp.cliente.telefone.replace(/\D/g, '')}?text=${msg}`, '_blank')
+                            }}
+                            className="btn-sm transition-colors text-xs bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] px-2 py-1 rounded-lg font-bold"
+                            title="Compartilhar no WhatsApp"
+                          >
+                            💬
+                          </button>
+                        </div>
                       )}
                       <button
                         onClick={() => openEdit(p)}
