@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       userVerification: 'preferred',
       allowCredentials: allCreds.map(c => ({
         id: c.credentialId,
-        transports: c.transports ? JSON.parse(c.transports) : undefined,
+        transports: c.transports ? (JSON.parse(c.transports) as any[]).filter(t => t !== 'hybrid') : undefined,
       })),
     })
 
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
         id: cred.credentialId,
         publicKey: Buffer.from(cred.publicKey, 'base64url'),
         counter: cred.counter,
-        transports: cred.transports ? JSON.parse(cred.transports) : undefined,
+        transports: cred.transports ? (JSON.parse(cred.transports) as any[]).filter(t => t !== 'hybrid') : undefined,
       },
     })
 

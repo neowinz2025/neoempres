@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         credentialId: Buffer.from(credential.id).toString('base64url'),
         publicKey: Buffer.from(credential.publicKey).toString('base64url'),
         counter: credential.counter,
-        transports: body.response?.transports ? JSON.stringify(body.response.transports) : null,
+        transports: body.response?.transports ? JSON.stringify(body.response.transports.filter((t: string) => t !== 'hybrid')) : null,
         userId: session.userId,
       },
     })
