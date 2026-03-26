@@ -19,6 +19,12 @@ export default function NovoEmprestimoPage() {
   const [taxaJuros, setTaxaJuros] = useState('5')
   const [tipo, setTipo] = useState<'PRICE' | 'SIMPLE' | 'BULLET'>('PRICE')
   const [numParcelas, setNumParcelas] = useState('12')
+  
+  // Quando mudar para Bullet, força 1 parcela
+  useEffect(() => {
+    if (tipo === 'BULLET') setNumParcelas('1')
+    else if (numParcelas === '1') setNumParcelas('12')
+  }, [tipo])
   const [frequencia, setFrequencia] = useState<'DIARIO' | 'SEMANAL' | 'MENSAL'>('MENSAL')
   const [multa, setMulta] = useState('2.0')
   const [juros, setJuros] = useState('0.033')
@@ -182,13 +188,21 @@ export default function NovoEmprestimoPage() {
               <select value={tipo} onChange={(e) => setTipo(e.target.value as 'PRICE' | 'SIMPLE' | 'BULLET')} className="select-field">
                 <option value="PRICE">Tabela Price</option>
                 <option value="SIMPLE">Juros Simples</option>
-                <option value="BULLET">Bullet (Único)</option>
+                <option value="BULLET">Bullet (Renovável)</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Parcelas</label>
-              <input type="number" value={numParcelas} onChange={(e) => setNumParcelas(e.target.value)} className="input-field" placeholder="12" min="1" max="360" required />
-            </div>
+            {tipo !== 'BULLET' ? (
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Parcelas</label>
+                <input type="number" value={numParcelas} onChange={(e) => setNumParcelas(e.target.value)} className="input-field" placeholder="12" min="1" max="360" required />
+              </div>
+            ) : (
+              <div className="flex flex-col justify-end">
+                <div className="bg-emerald-500/10 text-emerald-500 text-[10px] font-bold px-3 py-2 rounded-lg border border-emerald-500/20">
+                   🔄 Renovação Dinâmica Ativada
+                </div>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">Frequência</label>
               <select value={frequencia} onChange={(e) => setFrequencia(e.target.value as 'DIARIO' | 'SEMANAL' | 'MENSAL')} className="select-field">
