@@ -12,6 +12,11 @@ interface Emprestimo {
 const statusBadge: Record<string, string> = {
   ATIVO: 'badge-accent', QUITADO: 'badge-success', RENEGOCIADO: 'badge-info', INADIMPLENTE: 'badge-danger',
 }
+const tipoLabel: Record<string, string> = { 
+  PRICE: 'Parcelas Fixas', 
+  SIMPLE: 'Juros Simples', 
+  BULLET: 'Pagar Só Juros'
+}
 
 function fmt(v: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
@@ -76,8 +81,8 @@ export default function EmprestimosPage() {
                     <tr key={e.id}>
                       <td className="font-medium text-text-primary">{e.cliente.nome}</td>
                       <td className="font-mono text-sm">{fmt(e.valor)}</td>
-                      <td>{e.taxaJuros}%</td>
-                      <td><span className="badge badge-accent">{e.tipo}</span></td>
+                       <td>{e.taxaJuros}%</td>
+                       <td><span className="badge badge-accent">{tipoLabel[e.tipo] || e.tipo}</span></td>
                       <td>{e.numParcelas}x {fmt(e.valorParcela)}</td>
                       <td className="font-mono text-sm text-yellow-400">{fmt(e.saldoDevedor)}</td>
                       <td><span className={`badge ${statusBadge[e.status]}`}>{e.status}</span></td>
@@ -97,10 +102,10 @@ export default function EmprestimosPage() {
                   <span className="font-semibold">{e.cliente.nome}</span>
                   <span className={`badge ${statusBadge[e.status]}`}>{e.status}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-text-secondary">{fmt(e.valor)} • {e.tipo}</span>
-                  <span className="font-mono text-yellow-400">{fmt(e.saldoDevedor)}</span>
-                </div>
+                 <div className="flex items-center justify-between text-sm">
+                   <span className="text-text-secondary">{fmt(e.valor)} • {tipoLabel[e.tipo] || e.tipo}</span>
+                   <span className="font-mono text-yellow-400">{fmt(e.saldoDevedor)}</span>
+                 </div>
                 <div className="text-xs text-text-muted mt-1">{e.numParcelas}x {fmt(e.valorParcela)} • {e.taxaJuros}% a.m.</div>
               </Link>
             ))}

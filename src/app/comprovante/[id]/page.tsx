@@ -19,6 +19,11 @@ interface ReceiptData {
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('pt-BR')
 const fmtDateTime = (d: Date) => d.toLocaleString('pt-BR')
+const tipoLabel: Record<string, string> = { 
+  PRICE: 'Parcelas Fixas', 
+  SIMPLE: 'Juros Simples', 
+  BULLET: 'Pagar Só Juros'
+}
 
 declare const html2pdf: any
 
@@ -185,7 +190,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Referente à</p>
                   <p className="text-sm font-black text-slate-700">Parcela {data.numero} de {data.totalParcelas}</p>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">{data.emprestimoTipo} • Venc. {fmtDate(data.vencimento)}</p>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">{tipoLabel[data.emprestimoTipo] || data.emprestimoTipo} • Venc. {fmtDate(data.vencimento)}</p>
                 </div>
                 <div className="text-right flex flex-col justify-end">
                     <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none">Status</p>

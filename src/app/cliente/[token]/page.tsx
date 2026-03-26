@@ -99,7 +99,11 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
     </div>
   )
 
-  const tipoLabel: Record<string, string> = { MENSAL: 'Mensal', SEMANAL: 'Semanal', QUINZENAL: 'Quinzenal' }
+  const tipoLabel: Record<string, string> = { 
+    PRICE: 'Parcelas Fixas', 
+    SIMPLE: 'Juros Simples', 
+    BULLET: 'Pagar Só Juros'
+  }
 
   return (
     <div className="min-h-screen pb-10" style={{ background: 'linear-gradient(to bottom, #0f172a 0%, #1e293b 100%)' }}>

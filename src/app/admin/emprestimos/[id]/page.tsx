@@ -21,6 +21,11 @@ const statusBadge: Record<string, string> = {
   PAGO: 'badge-success', PENDENTE: 'badge-warning', ATRASADO: 'badge-danger', PARCIAL: 'badge-info',
   ATIVO: 'badge-accent', QUITADO: 'badge-success', RENEGOCIADO: 'badge-info', INADIMPLENTE: 'badge-danger',
 }
+const tipoLabel: Record<string, string> = { 
+  PRICE: 'Parcelas Fixas', 
+  SIMPLE: 'Juros Simples', 
+  BULLET: 'Pagar Só Juros'
+}
 
 function fmt(v: number) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v) }
 function fmtDate(d: string) { return new Date(d).toLocaleDateString('pt-BR') }
@@ -178,7 +183,7 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
             <div className="flex items-center gap-2 flex-wrap mb-2">
               <h1 className="text-xl font-bold">{fmt(emp.valor)}</h1>
               <span className={`badge ${statusBadge[emp.status]}`}>{emp.status}</span>
-              <span className="badge badge-accent">{emp.tipo}</span>
+              <span className="badge badge-accent">{tipoLabel[emp.tipo] || emp.tipo}</span>
             </div>
             <p className="text-text-secondary text-sm">
               Cliente: <Link href={`/admin/clientes/${emp.cliente.id}`} className="text-accent hover:underline">{emp.cliente.nome}</Link>
