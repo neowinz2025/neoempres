@@ -30,11 +30,14 @@ export async function GET(request: NextRequest) {
     const options = await generateAuthenticationOptions({
       rpID,
       userVerification: 'preferred',
+      // @ts-ignore: id must be Uint8Array but JSON output will be string
       allowCredentials: allCreds.map(c => ({
-        id: c.credentialId,
+        id: new Uint8Array(Buffer.from(c.credentialId, 'base64url')),
         transports: c.transports ? (JSON.parse(c.transports) as any[]).filter(t => t !== 'hybrid') : undefined,
       })),
     })
+
+    console.log('[WebAuthn Login Options] Generated options for rpID:', rpID)
 
     const response = NextResponse.json({ options })
     response.cookies.set('webauthn-challenge', options.challenge, {

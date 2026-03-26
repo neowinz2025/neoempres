@@ -44,8 +44,9 @@ export async function GET(request: NextRequest) {
       userName: session.email,
       userDisplayName: session.name || session.email,
       attestationType: 'none',
+      // @ts-ignore: id must be Uint8Array but JSON output will be string
       excludeCredentials: existingCreds.map((c) => ({
-        id: c.credentialId,
+        id: new Uint8Array(Buffer.from(c.credentialId, 'base64url')),
         transports: c.transports ? (JSON.parse(c.transports) as any[]) : undefined,
       })),
       authenticatorSelection: {
