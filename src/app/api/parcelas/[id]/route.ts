@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { sendTelegram } from '@/lib/notifications/telegram'
+import { addMonths, addWeeks, addDays } from 'date-fns'
 
 export async function PUT(
   request: NextRequest,
@@ -78,6 +79,45 @@ export async function PUT(
             data: { status: 'QUITADO', saldoDevedor: 0 },
           })
         }
+
+        // --- LÓGICA RENOVAÇÃO BULLET ---
+        if (parcela.emprestimo.tipo === 'BULLET') {
+          const interest = parcela.emprestimo.valor * (parcela.emprestimo.jurosDiario / 100)
+          const totalWithPrincipal = parcela.emprestimo.valor + interest
+          
+          // Se pagou juros mas não pagou o principal todo
+          if (currentTotalPaid < totalWithPrincipal * 0.99) {
+            // Verifica se já existe a próxima
+            const nextOne = await prisma.parcela.findFirst({
+              where: { emprestimoId: parcela.emprestimoId, numero: parcela.numero + 1 }
+            })
+
+            if (!nextOne) {
+              const freq = parcela.emprestimo.frequencia
+              let nextDate = new Date(parcela.vencimento)
+              if (freq === 'DIARIO') nextDate = addDays(nextDate, 1)
+              else if (freq === 'SEMANAL') nextDate = addWeeks(nextDate, 1)
+              else nextDate = addMonths(nextDate, 1)
+
+              await prisma.parcela.create({
+                data: {
+                  emprestimoId: parcela.emprestimoId,
+                  numero: parcela.numero + 1,
+                  valor: parcela.valor, // Mantém o valor (que no Bullet da última é Juros+Principal)
+                  valorOriginal: parcela.valorOriginal,
+                  vencimento: nextDate,
+                  status: 'PENDENTE'
+                }
+              })
+
+              await prisma.emprestimo.update({
+                where: { id: parcela.emprestimoId },
+                data: { numParcelas: { increment: 1 } }
+              })
+            }
+          }
+        }
+        // --- FIM LÓGICA BULLET ---
       }
     }
 

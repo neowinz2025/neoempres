@@ -260,14 +260,31 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
                   <td>
                     <div className="flex items-center gap-1.5">
                       {p.status !== 'PAGO' && (
-                        <button
-                          onClick={() => handleOpenPayment(p)}
-                          disabled={payingId === p.id}
-                          className="btn-sm text-xs"
-                          style={{ background: 'var(--color-success-light)', color: 'var(--color-success)', border: 'none', cursor: 'pointer', borderRadius: 8, padding: '4px 12px', fontWeight: 600 }}
-                        >
-                          {payingId === p.id ? '...' : p.status === 'PARCIAL' ? '✓ Completar Pgto' : '✓ Pgto'}
-                        </button>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleOpenPayment(p)}
+                            disabled={payingId === p.id}
+                            className="btn-sm text-[11px]"
+                            style={{ background: 'var(--color-success-light)', color: 'var(--color-success)', border: 'none', cursor: 'pointer', borderRadius: 8, padding: '4px 10px', fontWeight: 600 }}
+                          >
+                            {payingId === p.id ? '...' : p.status === 'PARCIAL' ? '✓ Completar' : '✓ Pgto'}
+                          </button>
+                          {emp.tipo === 'BULLET' && (
+                            <button
+                              onClick={() => {
+                                const interest = emp.valor * (emp.jurosDiario / 100)
+                                const defaultAmount = interest.toFixed(2)
+                                setPayAmount(defaultAmount)
+                                setPayMethod('PIX')
+                                setReceiptBase64('')
+                                setPaymentModal({ isOpen: true, parcelaId: p.id, valorTotal: p.valor, jaPago: p.valorPago || 0 })
+                              }}
+                              className="btn-sm text-[11px] bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 px-2 py-1 rounded-lg font-bold"
+                            >
+                              % Juros
+                            </button>
+                          )}
+                        </div>
                       )}
                       {(p.status === 'PAGO' || p.status === 'PARCIAL') && (
                         <button

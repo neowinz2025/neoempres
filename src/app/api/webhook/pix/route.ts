@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import CryptoJS from 'crypto-js'
 import { sendTelegram } from '@/lib/notifications/telegram'
+import { addMonths, addWeeks, addDays } from 'date-fns'
 
 export async function POST(request: NextRequest) {
   try {
@@ -85,12 +86,49 @@ export async function POST(request: NextRequest) {
           },
         })
 
-        if (pending === 0) {
+        if (pending === 0 && totalPaidNow >= parcela.valor) {
           await prisma.emprestimo.update({
             where: { id: parcela.emprestimoId },
             data: { status: 'QUITADO', saldoDevedor: 0 },
           })
         }
+
+        // --- LÓGICA RENOVAÇÃO BULLET ---
+        if (parcela.emprestimo.tipo === 'BULLET' && newStatus === 'PAGO') {
+          const interest = parcela.emprestimo.valor * (parcela.emprestimo.jurosDiario / 100)
+          const totalWithPrincipal = parcela.emprestimo.valor + interest
+          
+          if (totalPaidNow < totalWithPrincipal * 0.99) {
+            const nextOne = await prisma.parcela.findFirst({
+              where: { emprestimoId: parcela.emprestimoId, numero: parcela.numero + 1 }
+            })
+
+            if (!nextOne) {
+              const freq = parcela.emprestimo.frequencia
+              let nextDate = new Date(parcela.vencimento)
+              if (freq === 'DIARIO') nextDate = addDays(nextDate, 1)
+              else if (freq === 'SEMANAL') nextDate = addWeeks(nextDate, 1)
+              else nextDate = addMonths(nextDate, 1)
+
+              await prisma.parcela.create({
+                data: {
+                  emprestimoId: parcela.emprestimoId,
+                  numero: parcela.numero + 1,
+                  valor: parcela.valor,
+                  valorOriginal: parcela.valorOriginal,
+                  vencimento: nextDate,
+                  status: 'PENDENTE'
+                }
+              })
+
+              await prisma.emprestimo.update({
+                where: { id: parcela.emprestimoId },
+                data: { numParcelas: { increment: 1 } }
+              })
+            }
+          }
+        }
+        // --- FIM LÓGICA BULLET ---
 
         await prisma.log.create({
           data: {

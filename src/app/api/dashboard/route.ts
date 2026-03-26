@@ -73,7 +73,8 @@ export async function GET() {
       }
 
       const lateFees = Math.max(0, vPago - vOriginal)
-      jurosRecebidos += (parcelaInterest + lateFees)
+      const interestToRecord = Math.min(vPago, parcelaInterest)
+      jurosRecebidos += (interestToRecord + lateFees)
     }
 
     const totalAtrasadas = parcelasAtrasadas.length + parcelasPendentes.length

@@ -211,7 +211,9 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
                             {/* Pagar só Juros — opens amount modal */}
                             <button
                               onClick={() => {
-                                setPixAmountInput(restante.toFixed(2))
+                                const interest = emp.valor * (emp.jurosDiario / 100)
+                                const val = emp.tipo === 'BULLET' ? interest : restante
+                                setPixAmountInput(val.toFixed(2))
                                 setPixAmountModal({ parcelaId: p.id, valorRestante: restante })
                               }}
                               disabled={generatingPix === p.id}
