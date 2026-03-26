@@ -269,6 +269,15 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
                           {payingId === p.id ? '...' : p.status === 'PARCIAL' ? '✓ Completar Pgto' : '✓ Pgto'}
                         </button>
                       )}
+                      {(p.status === 'PAGO' || p.status === 'PARCIAL') && (
+                        <button
+                          onClick={() => window.open(`/comprovante/${p.id}`, '_blank')}
+                          className="btn-sm transition-colors text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 px-3 py-1 rounded-lg font-bold"
+                          title="Ver Recibo"
+                        >
+                          🧾
+                        </button>
+                      )}
                       <button
                         onClick={() => openEdit(p)}
                         className="btn-sm transition-colors text-xs bg-white/5 hover:bg-white/10 text-text-primary px-3 py-1 rounded-lg"

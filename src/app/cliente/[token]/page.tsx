@@ -226,6 +226,37 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
                   </div>
                 )}
               </div>
+
+              {/* Paid History Card */}
+              {emp.parcelas.filter(p => p.status === 'PAGO' || p.status === 'PARCIAL').length > 0 && (
+                <div className="bg-white rounded-2xl shadow-lg p-5">
+                  <h2 className="text-lg font-bold text-slate-800 mb-4">Pagamentos Realizados</h2>
+                  <div className="space-y-3">
+                    {emp.parcelas
+                      .filter(p => p.status === 'PAGO' || p.status === 'PARCIAL')
+                      .sort((a, b) => new Date(b.dataPagamento || b.vencimento).getTime() - new Date(a.dataPagamento || a.vencimento).getTime())
+                      .map((p) => (
+                        <div key={p.id} className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-bold text-sm text-slate-800">Parcela {p.numero}</span>
+                              <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-tight">Pagamento Realizado</span>
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {p.dataPagamento ? `Pago em ${fmtDate(p.dataPagamento)}` : 'Confirmado'} • {fmt(p.valorPago || 0)}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => window.open(`/comprovante/${p.id}?token=${token}`, '_blank')}
+                            className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-3 py-2 rounded-lg text-[11px] font-bold transition-all shadow-sm flex items-center gap-1.5"
+                          >
+                            🧾 Recibo
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
