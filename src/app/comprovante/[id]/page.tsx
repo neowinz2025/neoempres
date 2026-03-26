@@ -20,7 +20,7 @@ const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', c
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('pt-BR')
 const fmtDateTime = (d: Date) => d.toLocaleString('pt-BR')
 const tipoLabel: Record<string, string> = { 
-  PRICE: 'Parcelas Fixas', 
+  PRICE: 'Parcelas Fixas (Amortizável)', 
   SIMPLE: 'Juros Simples', 
   BULLET: 'Pagar Só Juros'
 }

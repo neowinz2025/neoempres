@@ -100,7 +100,7 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
   )
 
   const tipoLabel: Record<string, string> = { 
-    PRICE: 'Parcelas Fixas', 
+    PRICE: 'Parcelas Fixas (Amortizável)', 
     SIMPLE: 'Juros Simples', 
     BULLET: 'Pagar Só Juros'
   }

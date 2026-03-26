@@ -186,7 +186,7 @@ export default function NovoEmprestimoPage() {
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">Tipo</label>
               <select value={tipo} onChange={(e) => setTipo(e.target.value as 'PRICE' | 'SIMPLE' | 'BULLET')} className="select-field">
-                <option value="PRICE">Parcelas Fixas</option>
+                <option value="PRICE">Parcelas Fixas (Amortizável)</option>
                 <option value="SIMPLE">Juros Simples</option>
                 <option value="BULLET">Pagar Só Juros (Renovável)</option>
               </select>

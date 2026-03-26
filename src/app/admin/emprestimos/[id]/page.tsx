@@ -22,7 +22,7 @@ const statusBadge: Record<string, string> = {
   ATIVO: 'badge-accent', QUITADO: 'badge-success', RENEGOCIADO: 'badge-info', INADIMPLENTE: 'badge-danger',
 }
 const tipoLabel: Record<string, string> = { 
-  PRICE: 'Parcelas Fixas', 
+  PRICE: 'Parcelas Fixas (Amortizável)', 
   SIMPLE: 'Juros Simples', 
   BULLET: 'Pagar Só Juros'
 }
