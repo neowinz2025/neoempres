@@ -4,10 +4,11 @@ import { generateToken } from '@/lib/auth'
 import { generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server'
 import { headers } from 'next/headers'
 
-function getRpConfig(host: string) {
+function getRpConfig(host: string, protocol?: string) {
   const rpID = host.split(':')[0]
-  const protocol = rpID === 'localhost' ? 'http' : 'https'
-  const origin = `${protocol}://${host}`
+  // Se o protocolo não for fornecido, tenta adivinhar (localhost/127.0.0.1 = http, resto = https)
+  const proto = protocol || (rpID === 'localhost' || rpID === '127.0.0.1' ? 'http' : 'https')
+  const origin = `${proto}://${host}`
   return { rpID, origin }
 }
 
@@ -16,7 +17,8 @@ export async function GET(request: NextRequest) {
   try {
     const headersList = await headers()
     const host = headersList.get('host') || 'localhost'
-    const { rpID } = getRpConfig(host)
+    const protocol = headersList.get('x-forwarded-proto') || undefined
+    const { rpID, origin } = getRpConfig(host, protocol)
     const allCreds = await prisma.webAuthnCredential.findMany({
       include: { user: true },
     })
@@ -37,7 +39,8 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json({ options })
     response.cookies.set('webauthn-challenge', options.challenge, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: protocol === 'https',
+      sameSite: 'lax',
       maxAge: 300,
       path: '/',
     })
@@ -57,7 +60,8 @@ export async function POST(request: NextRequest) {
 
     const headersList = await headers()
     const host = headersList.get('host') || 'localhost'
-    const { rpID, origin } = getRpConfig(host)
+    const protocol = headersList.get('x-forwarded-proto') || undefined
+    const { rpID, origin } = getRpConfig(host, protocol)
 
     const credentialIdB64 = body.id
     const cred = await prisma.webAuthnCredential.findUnique({
@@ -116,7 +120,7 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set('auth-token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: protocol === 'https',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24,
       path: '/',
