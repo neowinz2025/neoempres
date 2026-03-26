@@ -64,14 +64,24 @@ export async function POST(request: NextRequest) {
     const { rpID, origin } = getRpConfig(host, protocol)
 
     const credentialIdB64 = body.id
+    console.log('[WebAuthn Verify Login] Searching for credentialId:', credentialIdB64)
+
     const cred = await prisma.webAuthnCredential.findUnique({
       where: { credentialId: credentialIdB64 },
       include: { user: true },
     })
 
-    if (!cred || !cred.user.active) {
+    if (!cred) {
+      console.warn('[WebAuthn Verify Login] Credential not found in DB:', credentialIdB64)
       return NextResponse.json({ error: 'Credencial não encontrada' }, { status: 401 })
     }
+    
+    if (!cred.user.active) {
+      console.warn('[WebAuthn Verify Login] User inactive:', cred.user.email)
+      return NextResponse.json({ error: 'Usuário inativo' }, { status: 401 })
+    }
+    
+    console.log('[WebAuthn Verify Login] Found credential for user:', cred.user.email)
 
     const verification = await verifyAuthenticationResponse({
       response: body,

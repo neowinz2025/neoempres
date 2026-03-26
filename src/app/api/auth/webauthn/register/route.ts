@@ -100,14 +100,36 @@ export async function POST(request: NextRequest) {
     }
 
     const { credential } = verification.registrationInfo
+    const credentialIdB64 = Buffer.from(credential.id).toString('base64url')
+    const publicKeyB64 = Buffer.from(credential.publicKey).toString('base64url')
 
-    await prisma.webAuthnCredential.create({
+    console.log('[WebAuthn] Saving credential:', {
+      credentialId: credentialIdB64,
+      userId: session.userId,
+      transports: body.response?.transports
+    })
+
+    try {
+      await prisma.webAuthnCredential.create({
+        data: {
+          credentialId: credentialIdB64,
+          publicKey: publicKeyB64,
+          counter: credential.counter,
+          transports: body.response?.transports ? JSON.stringify(body.response.transports.filter((t: string) => t !== 'hybrid')) : null,
+          userId: session.userId,
+        },
+      })
+    } catch (dbErr) {
+      console.error('[WebAuthn] Prisma error saving credential:', dbErr)
+      return NextResponse.json({ error: `Erro no banco de dados: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}` }, { status: 500 })
+    }
+
+    await prisma.log.create({
       data: {
-        credentialId: Buffer.from(credential.id).toString('base64url'),
-        publicKey: Buffer.from(credential.publicKey).toString('base64url'),
-        counter: credential.counter,
-        transports: body.response?.transports ? JSON.stringify(body.response.transports.filter((t: string) => t !== 'hybrid')) : null,
         userId: session.userId,
+        acao: 'REGISTRO_BIOMETRIA',
+        detalhes: `Biometria registrada com sucesso para ${session.email}`,
+        ip: request.headers.get('x-forwarded-for') || 'unknown',
       },
     })
 
