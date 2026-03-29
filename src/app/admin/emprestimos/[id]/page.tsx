@@ -14,6 +14,7 @@ interface Emprestimo {
   id: string; valor: number; taxaJuros: number; tipo: string; numParcelas: number; valorParcela: number
   frequencia: 'DIARIO' | 'SEMANAL' | 'MENSAL'; saldoDevedor: number; multaPercent: number; jurosDiario: number; status: string; token: string; createdAt: string
   cliente: { id: string; nome: string; telefone: string; score: string; token: string }
+  produto?: { id: string; nome: string; descricao: string | null; valorBase: number | null } | null
   parcelas: Parcela[]
 }
 
@@ -188,6 +189,12 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
             <p className="text-text-secondary text-sm">
               Cliente: <Link href={`/admin/clientes/${emp.cliente.id}`} className="text-accent hover:underline">{emp.cliente.nome}</Link>
             </p>
+            {emp.produto && (
+              <p className="text-text-secondary text-sm mt-1">
+                Prod. Financiado: <span className="font-medium text-white">{emp.produto.nome}</span>
+                {emp.produto.valorBase ? ` — ${fmt(emp.produto.valorBase)}` : ''}
+              </p>
+            )}
             <p className="text-text-muted text-xs mt-1">
               {emp.numParcelas}x de {fmt(emp.valorParcela)} ({emp.frequencia}) • Taxa {emp.taxaJuros}% {emp.frequencia === 'MENSAL' ? 'a.m.' : emp.frequencia === 'SEMANAL' ? 'a.s.' : 'a.d.'} • Multa {emp.multaPercent}% • Juros dia {emp.jurosDiario}%
             </p>

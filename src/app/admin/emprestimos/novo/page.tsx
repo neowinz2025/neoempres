@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation'
 interface Cliente {
   id: string; nome: string; telefone: string
 }
+interface Produto {
+  id: string; nome: string; descricao: string | null; valorBase: number | null
+}
 
 function fmt(v: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
@@ -14,7 +17,9 @@ function fmt(v: number) {
 export default function NovoEmprestimoPage() {
   const router = useRouter()
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [produtos, setProdutos] = useState<Produto[]>([])
   const [clienteId, setClienteId] = useState('')
+  const [produtoId, setProdutoId] = useState('')
   const [valor, setValor] = useState('')
   const [taxaJuros, setTaxaJuros] = useState('5')
   const [tipo, setTipo] = useState<'PRICE' | 'SIMPLE' | 'BULLET'>('PRICE')
@@ -35,6 +40,13 @@ export default function NovoEmprestimoPage() {
   const [saving, setSaving] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
 
+  // Modal para criar produto
+  const [isProdutoModalOpen, setIsProdutoModalOpen] = useState(false)
+  const [novoProdutoNome, setNovoProdutoNome] = useState('')
+  const [novoProdutoDesc, setNovoProdutoDesc] = useState('')
+  const [novoProdutoValor, setNovoProdutoValor] = useState('')
+  const [savingProduto, setSavingProduto] = useState(false)
+
   const taxaLabel = frequencia === 'MENSAL' ? 'a.m.' : frequencia === 'SEMANAL' ? 'a.s.' : 'a.d.'
 
   const showToast = (msg: string) => {
@@ -44,7 +56,44 @@ export default function NovoEmprestimoPage() {
 
   useEffect(() => {
     fetch('/api/clientes?limit=1000').then(r => r.json()).then(j => setClientes(j.data || []))
+    fetch('/api/produtos?ativo=true').then(r => r.json()).then(j => setProdutos(j.data || []))
   }, [])
+
+  const handleProdutoChange = (id: string) => {
+    setProdutoId(id)
+    if (id) {
+      const p = produtos.find(x => x.id === id)
+      if (p && p.valorBase) setValor(p.valorBase.toString())
+    }
+  }
+
+  const handleCreateProduto = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!novoProdutoNome) return
+    setSavingProduto(true)
+    const res = await fetch('/api/produtos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nome: novoProdutoNome,
+        descricao: novoProdutoDesc || undefined,
+        valorBase: novoProdutoValor ? parseFloat(novoProdutoValor) : undefined,
+      }),
+    })
+    setSavingProduto(false)
+    if (res.ok) {
+      const json = await res.json()
+      setProdutos(prev => [...prev, json.data])
+      handleProdutoChange(json.data.id)
+      setIsProdutoModalOpen(false)
+      setNovoProdutoNome('')
+      setNovoProdutoDesc('')
+      setNovoProdutoValor('')
+      showToast('Produto criado com sucesso!')
+    } else {
+      showToast('Erro ao criar produto')
+    }
+  }
 
   // Auto-simulate
   useEffect(() => {
@@ -119,7 +168,7 @@ export default function NovoEmprestimoPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        clienteId, valor: parseFloat(valor), taxaJuros: parseFloat(taxaAEnviar.toFixed(4)),
+        clienteId, produtoId: produtoId || undefined, valor: parseFloat(valor), taxaJuros: parseFloat(taxaAEnviar.toFixed(4)),
         tipo, numParcelas: parseInt(numParcelas), dataInicio, frequencia,
         multaPercent: parseFloat(multa), jurosDiario: parseFloat(juros)
       }),
@@ -147,12 +196,26 @@ export default function NovoEmprestimoPage() {
         <div className="glass-card p-5 space-y-4">
           <h2 className="font-semibold text-sm text-text-muted uppercase tracking-wide">Dados do Empréstimo</h2>
 
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Cliente</label>
-            <select value={clienteId} onChange={(e) => setClienteId(e.target.value)} className="select-field" required>
-              <option value="">Selecione um cliente</option>
-              {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome} — {c.telefone}</option>)}
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Cliente</label>
+              <select value={clienteId} onChange={(e) => setClienteId(e.target.value)} className="select-field" required>
+                <option value="">Selecione um cliente</option>
+                {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome} — {c.telefone}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">Produto Financiado (Opcional)</label>
+              <div className="flex gap-2">
+                <select value={produtoId} onChange={(e) => handleProdutoChange(e.target.value)} className="select-field flex-1">
+                  <option value="">Nenhum produto</option>
+                  {produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+                <button type="button" onClick={() => setIsProdutoModalOpen(true)} className="btn-secondary px-3" title="Cadastrar Novo Produto">
+                  + Novo
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -249,6 +312,35 @@ export default function NovoEmprestimoPage() {
           </button>
         </div>
       </form>
+
+      {/* Modal Criar Produto */}
+      {isProdutoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-[#1e1e2e] rounded-xl w-full max-w-md p-6 border border-white/10 shadow-2xl animate-in zoom-in-95">
+            <h3 className="text-xl font-bold mb-4">Cadastrar Produto</h3>
+            <form onSubmit={handleCreateProduto} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Nome do Produto</label>
+                <input type="text" value={novoProdutoNome} onChange={e => setNovoProdutoNome(e.target.value)} className="input-field" required placeholder="Ex: Moto Honda CG 160" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Valor Base (R$)</label>
+                <input type="number" step="0.01" value={novoProdutoValor} onChange={e => setNovoProdutoValor(e.target.value)} className="input-field" placeholder="Ex: 15000" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Descrição / Detalhes</label>
+                <textarea value={novoProdutoDesc} onChange={e => setNovoProdutoDesc(e.target.value)} className="input-field min-h-[80px]" placeholder="Ano, Marca, Chassi, etc." />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setIsProdutoModalOpen(false)} className="btn-secondary flex-1">Cancelar</button>
+                <button type="submit" disabled={savingProduto} className="btn-primary flex-1 justify-center">
+                  {savingProduto ? 'Salvando...' : 'Salvar Produto'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

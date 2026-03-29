@@ -18,6 +18,7 @@ export async function GET(
     where: { id },
     include: {
       cliente: true,
+      produto: true,
       parcelas: { orderBy: { numero: 'asc' } },
     },
   })
@@ -101,6 +102,7 @@ export async function PUT(
       include: {
         parcelas: { orderBy: { numero: 'asc' } },
         cliente: true,
+        produto: true,
       },
     })
 

@@ -59,29 +59,29 @@ enum StatusNotificacao {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(OPERATOR)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  logs      Log[]
+  id                  String               @id @default(cuid())
+  name                String
+  email               String               @unique
+  password            String
+  role                Role                 @default(OPERATOR)
+  active              Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  logs                Log[]
   webauthnCredentials WebAuthnCredential[]
 
   @@map("users")
 }
 
 model WebAuthnCredential {
-  id             String   @id @default(cuid())
-  credentialId   String   @unique
-  publicKey      String
-  counter        Int      @default(0)
-  transports     String?
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now())
+  id           String   @id @default(cuid())
+  credentialId String   @unique
+  publicKey    String
+  counter      Int      @default(0)
+  transports   String?
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
 
   @@map("webauthn_credentials")
 }
@@ -100,45 +100,47 @@ model Cliente {
 }
 
 model Emprestimo {
-  id            String            @id @default(cuid())
-  clienteId     String
-  cliente       Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  valor         Float
-  taxaJuros     Float
-  tipo          TipoEmprestimo
-  frequencia    FrequenciaPagamento @default(MENSAL)
-  numParcelas   Int
-  valorParcela  Float
-  saldoDevedor  Float
-  multaPercent  Float             @default(2.0)
-  jurosDiario   Float             @default(0.033)
-  status        StatusEmprestimo  @default(ATIVO)
-  token         String            @unique @default(cuid())
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  parcelas      Parcela[]
+  id           String              @id @default(cuid())
+  clienteId    String
+  cliente      Cliente             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  valor        Float
+  taxaJuros    Float
+  tipo         TipoEmprestimo
+  frequencia   FrequenciaPagamento @default(MENSAL)
+  numParcelas  Int
+  valorParcela Float
+  saldoDevedor Float
+  multaPercent Float               @default(2.0)
+  jurosDiario  Float               @default(0.033)
+  status       StatusEmprestimo    @default(ATIVO)
+  token        String              @unique @default(cuid())
+  produtoId    String?
+  produto      Produto?            @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  parcelas     Parcela[]
 
   @@map("emprestimos")
 }
 
 model Parcela {
-  id             String          @id @default(cuid())
+  id             String        @id @default(cuid())
   emprestimoId   String
-  emprestimo     Emprestimo      @relation(fields: [emprestimoId], references: [id], onDelete: Cascade)
+  emprestimo     Emprestimo    @relation(fields: [emprestimoId], references: [id], onDelete: Cascade)
   numero         Int
   valor          Float
   valorOriginal  Float
-  multa          Float           @default(0)
-  jurosAtraso    Float           @default(0)
+  multa          Float         @default(0)
+  jurosAtraso    Float         @default(0)
   vencimento     DateTime
-  status         StatusParcela   @default(PENDENTE)
+  status         StatusParcela @default(PENDENTE)
   pixTxId        String?
   dataPagamento  DateTime?
   valorPago      Float?
   formaPagamento String?
-  comprovante    String?         @db.Text
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  comprovante    String?       @db.Text
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
   notificacoes   Notificacao[]
 
   @@map("parcelas")
@@ -176,4 +178,17 @@ model Notificacao {
   createdAt DateTime          @default(now())
 
   @@map("notificacoes")
+}
+
+model Produto {
+  id          String       @id @default(cuid())
+  nome        String
+  descricao   String?
+  valorBase   Float?
+  ativo       Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  emprestimos Emprestimo[]
+
+  @@map("produtos")
 }

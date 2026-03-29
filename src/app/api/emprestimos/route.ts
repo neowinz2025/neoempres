@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         cliente: { select: { id: true, nome: true, telefone: true, score: true } },
+        produto: true,
         parcelas: { orderBy: { numero: 'asc' } },
       },
       orderBy: { createdAt: 'desc' },
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { clienteId, valor, taxaJuros, tipo, numParcelas, dataInicio, multaPercent, jurosDiario, frequencia } = body
+    const { clienteId, valor, taxaJuros, tipo, numParcelas, dataInicio, multaPercent, jurosDiario, frequencia, produtoId } = body
 
     if (!clienteId || !valor || taxaJuros === undefined || !tipo || !numParcelas) {
       return NextResponse.json(
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
     const emprestimo = await prisma.emprestimo.create({
       data: {
         clienteId,
+        produtoId: produtoId || null,
         valor,
         taxaJuros,
         tipo,
@@ -104,6 +106,7 @@ export async function POST(request: NextRequest) {
       include: {
         parcelas: { orderBy: { numero: 'asc' } },
         cliente: true,
+        produto: true,
       },
     })
 
