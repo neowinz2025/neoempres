@@ -190,10 +190,15 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
               Cliente: <Link href={`/admin/clientes/${emp.cliente.id}`} className="text-accent hover:underline">{emp.cliente.nome}</Link>
             </p>
             {emp.produto && (
-              <p className="text-text-secondary text-sm mt-1">
-                Prod. Financiado: <span className="font-medium text-white">{emp.produto.nome}</span>
-                {emp.produto.valorBase ? ` — ${fmt(emp.produto.valorBase)}` : ''}
-              </p>
+              <div className="mt-3 p-3 bg-white/5 border border-white/10 rounded-xl">
+                <div className="text-xs text-text-muted uppercase tracking-wider mb-1 font-semibold flex items-center gap-2">
+                  📦 Produto Financiado
+                </div>
+                <div className="font-medium text-white">{emp.produto.nome} {emp.produto.valorBase ? ` — ${fmt(emp.produto.valorBase)}` : ''}</div>
+                {emp.produto.descricao && (
+                  <div className="text-sm text-text-secondary mt-1.5 whitespace-pre-wrap">{emp.produto.descricao}</div>
+                )}
+              </div>
             )}
             <p className="text-text-muted text-xs mt-1">
               {emp.numParcelas}x de {fmt(emp.valorParcela)} ({emp.frequencia}) • Taxa {emp.taxaJuros}% {emp.frequencia === 'MENSAL' ? 'a.m.' : emp.frequencia === 'SEMANAL' ? 'a.s.' : 'a.d.'} • Multa {emp.multaPercent}% • Juros dia {emp.jurosDiario}%
