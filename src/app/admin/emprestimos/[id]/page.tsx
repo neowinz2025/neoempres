@@ -12,7 +12,7 @@ interface Parcela {
 }
 interface Emprestimo {
   id: string; valor: number; taxaJuros: number; tipo: string; numParcelas: number; valorParcela: number
-  frequencia: 'DIARIO' | 'SEMANAL' | 'MENSAL'; saldoDevedor: number; multaPercent: number; jurosDiario: number; status: string; token: string; createdAt: string
+  frequencia: 'DIARIO' | 'SEMANAL' | 'QUINZENAL' | 'MENSAL'; saldoDevedor: number; multaPercent: number; jurosDiario: number; status: string; token: string; createdAt: string
   cliente: { id: string; nome: string; telefone: string; score: string; token: string }
   produto?: { id: string; nome: string; descricao: string | null; valorBase: number | null } | null
   parcelas: Parcela[]
@@ -201,7 +201,7 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
               </div>
             )}
             <p className="text-text-muted text-xs mt-1">
-              {emp.numParcelas}x de {fmt(emp.valorParcela)} ({emp.frequencia}) • Taxa {emp.taxaJuros}% {emp.frequencia === 'MENSAL' ? 'a.m.' : emp.frequencia === 'SEMANAL' ? 'a.s.' : 'a.d.'} • Multa {emp.multaPercent}% • Juros dia {emp.jurosDiario}%
+              {emp.numParcelas}x de {fmt(emp.valorParcela)} ({emp.frequencia}) • Taxa {emp.taxaJuros}% {emp.frequencia === 'MENSAL' ? 'a.m.' : emp.frequencia === 'SEMANAL' ? 'a.s.' : emp.frequencia === 'QUINZENAL' ? 'a.q.' : 'a.d.'} • Multa {emp.multaPercent}% • Juros dia {emp.jurosDiario}%
             </p>
           </div>
           <div className="flex flex-col gap-2">

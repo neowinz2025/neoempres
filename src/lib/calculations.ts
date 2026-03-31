@@ -1,10 +1,11 @@
 import { addMonths, addDays, addWeeks, differenceInDays, isAfter } from 'date-fns'
 
-type Frequencia = 'DIARIO' | 'SEMANAL' | 'MENSAL'
+type Frequencia = 'DIARIO' | 'SEMANAL' | 'QUINZENAL' | 'MENSAL'
 
 function getVencimento(inicio: Date, n: number, freq: Frequencia): Date {
   if (freq === 'DIARIO') return addDays(inicio, n)
   if (freq === 'SEMANAL') return addWeeks(inicio, n)
+  if (freq === 'QUINZENAL') return addDays(inicio, 15 * n)
   return addMonths(inicio, n)
 }
 

@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
               let nextDate = new Date(parcela.vencimento)
               if (freq === 'DIARIO') nextDate = addDays(nextDate, 1)
               else if (freq === 'SEMANAL') nextDate = addWeeks(nextDate, 1)
+              else if (freq === 'QUINZENAL') nextDate = addDays(nextDate, 15)
               else nextDate = addMonths(nextDate, 1)
 
               await prisma.parcela.create({

@@ -29,6 +29,7 @@ enum TipoEmprestimo {
 enum FrequenciaPagamento {
   DIARIO
   SEMANAL
+  QUINZENAL
   MENSAL
 }
 

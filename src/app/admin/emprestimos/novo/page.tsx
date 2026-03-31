@@ -30,7 +30,7 @@ export default function NovoEmprestimoPage() {
     if (tipo === 'BULLET') setNumParcelas('1')
     else if (numParcelas === '1') setNumParcelas('12')
   }, [tipo])
-  const [frequencia, setFrequencia] = useState<'DIARIO' | 'SEMANAL' | 'MENSAL'>('MENSAL')
+  const [frequencia, setFrequencia] = useState<'DIARIO' | 'SEMANAL' | 'QUINZENAL' | 'MENSAL'>('MENSAL')
   const [multa, setMulta] = useState('2.0')
   const [juros, setJuros] = useState('0.033')
   const [modoEntrada, setModoEntrada] = useState<'TAXA' | 'PARCELA'>('TAXA')
@@ -47,7 +47,7 @@ export default function NovoEmprestimoPage() {
   const [novoProdutoValor, setNovoProdutoValor] = useState('')
   const [savingProduto, setSavingProduto] = useState(false)
 
-  const taxaLabel = frequencia === 'MENSAL' ? 'a.m.' : frequencia === 'SEMANAL' ? 'a.s.' : 'a.d.'
+  const taxaLabel = frequencia === 'MENSAL' ? 'a.m.' : frequencia === 'SEMANAL' ? 'a.s.' : frequencia === 'QUINZENAL' ? 'a.q.' : 'a.d.'
 
   const showToast = (msg: string) => {
     setToastMsg(msg)
@@ -238,7 +238,7 @@ export default function NovoEmprestimoPage() {
             ) : (
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">
-                  {tipo === 'BULLET' ? 'Juros Mensal (R$)' : 'Valor da Parcela (R$)'}
+                  {tipo === 'BULLET' ? 'Valor dos Juros (R$)' : 'Valor da Parcela (R$)'}
                 </label>
                 <input type="number" value={valorParcelaInput} onChange={(e) => setValorParcelaInput(e.target.value)} className="input-field" placeholder="0.00" step="0.01" min="0.1" required />
               </div>
@@ -268,8 +268,9 @@ export default function NovoEmprestimoPage() {
             )}
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">Frequência</label>
-              <select value={frequencia} onChange={(e) => setFrequencia(e.target.value as 'DIARIO' | 'SEMANAL' | 'MENSAL')} className="select-field">
+              <select value={frequencia} onChange={(e) => setFrequencia(e.target.value as 'DIARIO' | 'SEMANAL' | 'QUINZENAL' | 'MENSAL')} className="select-field">
                 <option value="MENSAL">Mensal</option>
+                <option value="QUINZENAL">Quinzenal</option>
                 <option value="SEMANAL">Semanal</option>
                 <option value="DIARIO">Diário</option>
               </select>
