@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { clienteId, valor, taxaJuros, tipo, numParcelas, dataInicio, multaPercent, jurosDiario, frequencia, produtoId } = body
+    const { clienteId, valor, taxaJuros, tipo, numParcelas, dataInicio, multaPercent, jurosDiario, frequencia, produtoId, parcelasCustomizadas } = body
 
     if (!clienteId || !valor || taxaJuros === undefined || !tipo || !numParcelas) {
       return NextResponse.json(
@@ -81,6 +81,26 @@ export async function POST(request: NextRequest) {
     const freqVal = frequencia || 'MENSAL'
     const simulacao = calcSimulacao(tipo, valor, taxaJuros, numParcelas, inicio, freqVal)
 
+    let finalParcelas = simulacao.parcelas.map((p) => ({
+      numero: p.numero,
+      valor: p.valor,
+      valorOriginal: p.valor,
+      vencimento: p.vencimento,
+    }))
+    let finalSaldoDevedor = simulacao.totalPago
+    let finalValorParcela = simulacao.valorParcela
+
+    if (parcelasCustomizadas && Array.isArray(parcelasCustomizadas) && parcelasCustomizadas.length > 0) {
+      finalParcelas = parcelasCustomizadas.map((p: any) => ({
+        numero: p.numero,
+        valor: p.valor,
+        valorOriginal: p.valor,
+        vencimento: new Date(p.vencimento),
+      }))
+      finalSaldoDevedor = finalParcelas.reduce((acc, curr) => acc + curr.valor, 0)
+      finalValorParcela = finalParcelas[0].valor
+    }
+
     const emprestimo = await prisma.emprestimo.create({
       data: {
         clienteId,
@@ -89,18 +109,13 @@ export async function POST(request: NextRequest) {
         taxaJuros,
         tipo,
         frequencia: freqVal,
-        numParcelas,
-        valorParcela: simulacao.valorParcela,
-        saldoDevedor: simulacao.totalPago,
+        numParcelas: finalParcelas.length,
+        valorParcela: finalValorParcela,
+        saldoDevedor: finalSaldoDevedor,
         multaPercent: multaPercent ?? 2.0,
         jurosDiario: jurosDiario ?? 0.033,
         parcelas: {
-          create: simulacao.parcelas.map((p) => ({
-            numero: p.numero,
-            valor: p.valor,
-            valorOriginal: p.valor,
-            vencimento: p.vencimento,
-          })),
+          create: finalParcelas,
         },
       },
       include: {

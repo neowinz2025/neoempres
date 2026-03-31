@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { calcSimulacao } from '@/lib/calculations'
 
 interface Cliente {
   id: string; nome: string; telefone: string
@@ -37,6 +38,8 @@ export default function NovoEmprestimoPage() {
   const [valorParcelaInput, setValorParcelaInput] = useState('')
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
   const [simulacao, setSimulacao] = useState<{valorParcela: number; totalPago: number; totalJuros: number; taxaCalculada: number} | null>(null)
+  const [parcelasEditaveis, setParcelasEditaveis] = useState<{numero: number, valor: number, vencimento: string}[]>([])
+  const [taxaCalculadaBase, setTaxaCalculadaBase] = useState(0)
   const [saving, setSaving] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
 
@@ -95,41 +98,21 @@ export default function NovoEmprestimoPage() {
     }
   }
 
-  // Auto-simulate
+  // Auto-simulate base
   useEffect(() => {
     const v = parseFloat(valor)
     const n = parseInt(numParcelas)
-    if (!v || !n || v <= 0) { setSimulacao(null); return }
+    if (!v || !n || v <= 0) { setParcelasEditaveis([]); setTaxaCalculadaBase(0); return }
 
+    let t = 0
     if (modoEntrada === 'TAXA') {
-      const t = parseFloat(taxaJuros)
-      if (!t) { setSimulacao(null); return }
-      const i = t / 100
-      let valorParcela: number, totalPago: number
-      if (tipo === 'PRICE') {
-        valorParcela = v * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1)
-        totalPago = valorParcela * n
-      } else if (tipo === 'SIMPLE') {
-        valorParcela = v / n + v * i
-        totalPago = valorParcela * n
-      } else if (tipo === 'BULLET') {
-        valorParcela = v * i
-        totalPago = v + (valorParcela * n)
-      } else {
-        totalPago = v + v * i * n
-        valorParcela = totalPago
-      }
-      setSimulacao({
-        valorParcela: Math.round(valorParcela * 100) / 100,
-        totalPago: Math.round(totalPago * 100) / 100,
-        totalJuros: Math.round((totalPago - v) * 100) / 100,
-        taxaCalculada: t
-      })
+      t = parseFloat(taxaJuros)
+      if (!t) { setParcelasEditaveis([]); setTaxaCalculadaBase(0); return }
     } else {
       const pmt = parseFloat(valorParcelaInput)
-      if (!pmt) { setSimulacao(null); return }
-      if (tipo === 'BULLET' && pmt < v) { setSimulacao(null); return }
-      if (tipo !== 'BULLET' && pmt * n < v) { setSimulacao(null); return }
+      if (!pmt) { setParcelasEditaveis([]); setTaxaCalculadaBase(0); return }
+      if (tipo === 'BULLET' && pmt < v) { setParcelasEditaveis([]); setTaxaCalculadaBase(0); return }
+      if (tipo !== 'BULLET' && pmt * n < v) { setParcelasEditaveis([]); setTaxaCalculadaBase(0); return }
       
       let i = 0;
       if (tipo === 'SIMPLE') {
@@ -146,16 +129,52 @@ export default function NovoEmprestimoPage() {
           if (guessPV > v) low = i; else high = i;
         }
       }
-      
-      const t = i * 100;
-      setSimulacao({
-        valorParcela: Math.round(tipo === 'BULLET' ? pmt * 100 : pmt * 100) / 100,
-        totalPago: Math.round(tipo === 'BULLET' ? (v + pmt * n) * 100 : pmt * n * 100) / 100,
-        totalJuros: Math.round(tipo === 'BULLET' ? (pmt * n) * 100 : (pmt * n - v) * 100) / 100,
-        taxaCalculada: t
-      })
+      t = i * 100;
     }
-  }, [valor, taxaJuros, tipo, numParcelas, modoEntrada, valorParcelaInput])
+
+    setTaxaCalculadaBase(t)
+    const inicio = dataInicio ? new Date(dataInicio) : new Date()
+    if (dataInicio && inicio.getTime() === new Date(`${dataInicio}T00:00:00`).getTime()) {
+      // ajusta para nao ficar dia anterior por timezone
+      inicio.setUTCHours(12, 0, 0, 0)
+    }
+
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const result = calcSimulacao(tipo, v, t, n, inicio, frequencia)
+    setParcelasEditaveis(result.parcelas.map((p: any) => ({
+      numero: p.numero,
+      valor: p.valor,
+      vencimento: p.vencimento.toISOString().split('T')[0]
+    })))
+  }, [valor, taxaJuros, tipo, numParcelas, modoEntrada, valorParcelaInput, frequencia, dataInicio])
+
+  // Derive simulacao from parcelasEditaveis
+  useEffect(() => {
+    if (!parcelasEditaveis.length) {
+      setSimulacao(null)
+      return
+    }
+    const v = parseFloat(valor)
+    const totalPago = parcelasEditaveis.reduce((acc, p) => acc + p.valor, 0)
+    const totalJuros = totalPago - (v || 0)
+    setSimulacao({
+      valorParcela: parcelasEditaveis[0]?.valor || 0,
+      totalPago: Math.round(totalPago * 100) / 100,
+      totalJuros: Math.max(0, Math.round(totalJuros * 100) / 100),
+      taxaCalculada: taxaCalculadaBase
+    })
+  }, [parcelasEditaveis, valor, taxaCalculadaBase])
+
+  const handleUpdateParcela = (index: number, field: 'valor' | 'vencimento', val: string) => {
+    const updated = [...parcelasEditaveis]
+    if (field === 'valor') {
+      updated[index].valor = parseFloat(val) || 0
+    } else {
+      updated[index].vencimento = val
+    }
+    setParcelasEditaveis(updated)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -170,7 +189,8 @@ export default function NovoEmprestimoPage() {
       body: JSON.stringify({
         clienteId, produtoId: produtoId || undefined, valor: parseFloat(valor), taxaJuros: parseFloat(taxaAEnviar.toFixed(4)),
         tipo, numParcelas: parseInt(numParcelas), dataInicio, frequencia,
-        multaPercent: parseFloat(multa), jurosDiario: parseFloat(juros)
+        multaPercent: parseFloat(multa), jurosDiario: parseFloat(juros),
+        parcelasCustomizadas: parcelasEditaveis
       }),
     })
     if (res.ok) {
@@ -295,13 +315,42 @@ export default function NovoEmprestimoPage() {
 
         {/* Simulation Preview */}
         {simulacao && (
-          <div className="glass-card p-5 space-y-3" style={{ borderColor: 'rgba(99,102,241,0.3)' }}>
-            <h2 className="font-semibold text-sm text-accent uppercase tracking-wide">📊 Simulação</h2>
-            <div className="grid grid-cols-4 gap-4">
-              <div><div className="text-xs text-text-muted mb-1">Valor da Parcela</div><div className="text-sm font-bold text-accent">{fmt(simulacao.valorParcela)}</div></div>
-              <div><div className="text-xs text-text-muted mb-1">Total Pago</div><div className="text-sm font-bold text-text-primary">{fmt(simulacao.totalPago)}</div></div>
+          <div className="glass-card p-5 space-y-4" style={{ borderColor: 'rgba(99,102,241,0.3)' }}>
+            <h2 className="font-semibold text-sm text-accent uppercase tracking-wide">📊 Parcelas e Simulação</h2>
+            <div className="grid grid-cols-4 gap-4 pb-4 border-b border-white/5">
+              <div><div className="text-xs text-text-muted mb-1">1ª Parcela</div><div className="text-sm font-bold text-accent">{fmt(simulacao.valorParcela)}</div></div>
+              <div><div className="text-xs text-text-muted mb-1">Total Recebido</div><div className="text-sm font-bold text-text-primary">{fmt(simulacao.totalPago)}</div></div>
               <div><div className="text-xs text-text-muted mb-1">Total de Juros</div><div className="text-sm font-bold text-yellow-400">{fmt(simulacao.totalJuros)}</div></div>
-              <div><div className="text-xs text-text-muted mb-1">Taxa Implícita</div><div className="text-sm font-bold text-info">{simulacao.taxaCalculada.toFixed(2)}% {taxaLabel}</div></div>
+              <div><div className="text-xs text-text-muted mb-1">Taxa Implícita Base</div><div className="text-sm font-bold text-info">{simulacao.taxaCalculada.toFixed(2)}% {taxaLabel}</div></div>
+            </div>
+            
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="text-xs text-text-muted mb-2">Edite os valores ou datas abaixo para personalizar o fluxo:</div>
+              {parcelasEditaveis.map((p, idx) => (
+                <div key={idx} className="flex gap-3 items-center bg-white/5 p-2 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                  <div className="w-8 text-center text-xs font-bold text-text-muted">#{p.numero}</div>
+                  <div className="flex-1">
+                    <label className="text-[10px] text-text-muted uppercase tracking-wider mb-1 block">Valor Esperado</label>
+                    <input 
+                      type="number" 
+                      value={p.valor || ''} 
+                      onChange={(e) => handleUpdateParcela(idx, 'valor', e.target.value)}
+                      className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent font-mono"
+                      step="0.01" min="0" required
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] text-text-muted uppercase tracking-wider mb-1 block">Vencimento</label>
+                    <input 
+                      type="date" 
+                      value={p.vencimento} 
+                      onChange={(e) => handleUpdateParcela(idx, 'vencimento', e.target.value)}
+                      className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                      required
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
