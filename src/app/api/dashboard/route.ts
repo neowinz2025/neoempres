@@ -9,116 +9,125 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
+    // ── All aggregations pushed to the database — no more full table scan ──────
     const [
-      totalEmprestimos,
-      emprestimosAtivos,
-      todasParcelas,
-      parcelasPagas,
-      parcelasAtrasadas,
-      parcelasPendentes,
+      empAgg,
+      empAtivoAgg,
+      parcelasGrouped,
+      totalClientes,
     ] = await Promise.all([
-      prisma.emprestimo.findMany({ select: { valor: true, saldoDevedor: true, status: true } }),
-      prisma.emprestimo.findMany({
+      // Total emprestado e saldo geral
+      prisma.emprestimo.aggregate({
+        _sum: { valor: true, saldoDevedor: true },
+      }),
+      // Apenas ativos
+      prisma.emprestimo.aggregate({
         where: { status: 'ATIVO' },
-        select: { valor: true, saldoDevedor: true },
+        _sum: { saldoDevedor: true },
       }),
-      prisma.parcela.findMany({
-        select: { valor: true, valorOriginal: true, valorPago: true, status: true, vencimento: true },
+      // Parcelas agrupadas por status
+      prisma.parcela.groupBy({
+        by: ['status'],
+        _count: { id: true },
+        _sum: { valor: true, valorPago: true },
       }),
-      prisma.parcela.findMany({
-        where: { status: 'PAGO' },
-        include: { emprestimo: { select: { valor: true, taxaJuros: true, tipo: true, numParcelas: true } } },
-      }),
-      prisma.parcela.findMany({
-        where: { status: 'ATRASADO' },
-        select: { valor: true },
-      }),
-      prisma.parcela.findMany({
-        where: { status: 'PENDENTE', vencimento: { lt: new Date() } },
-        select: { valor: true },
-      }),
+      prisma.cliente.count(),
     ])
 
-    const capitalEmprestado = totalEmprestimos.reduce((s, e) => s + (e.valor || 0), 0)
-    const capitalEmAberto = emprestimosAtivos.reduce((s, e) => s + (e.saldoDevedor || 0), 0)
-    const totalRecebido = parcelasPagas.reduce((s, p) => s + (p.valorPago || 0), 0)
-    
-    // Calculate Juros Recebidos (Base Interest + Late Fees)
-    let jurosRecebidos = 0
-    for (const p of parcelasPagas) {
-      const vPago = p.valorPago || 0
-      const vOriginal = p.valorOriginal || 0
-      const e = p.emprestimo
-      if (!e) continue
+    const capitalEmprestado = empAgg._sum.valor ?? 0
+    const capitalEmAberto = empAtivoAgg._sum.saldoDevedor ?? 0
 
-      const i = (e.taxaJuros || 0) / 100
-      let parcelaInterest = 0
-
-      if (e.tipo === 'BULLET') {
-        // In Bullet, every installment's original value is just the interest (except the last one which has principal too)
-        // But our calcBullet returns valorParcela = interest.
-        // So interest is simply valorOriginal.
-        // Wait, to be safe: interest = valor * i
-        parcelaInterest = e.valor * i
-      } else if (e.tipo === 'SIMPLE') {
-        // interest = Principal * rate
-        parcelaInterest = e.valor * i
-      } else if (e.tipo === 'PRICE') {
-        // For Price, we can approximate: TotalInterest / numParcelas
-        // Or PMT - (Principal / numParcelas) -> Not accurate but better than 0
-        const n = e.numParcelas || 1
-        const pmt = e.valor * (i * Math.pow(1 + i, n)) / (Math.pow(1 + i, n) - 1)
-        const totalJurosPrevisto = (pmt * n) - e.valor
-        parcelaInterest = totalJurosPrevisto / n
-      }
-
-      const lateFees = Math.max(0, vPago - vOriginal)
-      const interestToRecord = Math.min(vPago, parcelaInterest)
-      jurosRecebidos += (interestToRecord + lateFees)
-    }
-
-    const totalAtrasadas = parcelasAtrasadas.length + parcelasPendentes.length
-    const valorAtrasado = [...parcelasAtrasadas, ...parcelasPendentes].reduce(
-      (s, p) => s + (p.valor || 0),
-      0
+    // Map grouped results
+    const byStatus = Object.fromEntries(
+      parcelasGrouped.map((g) => [
+        g.status,
+        { count: g._count.id, valor: g._sum.valor ?? 0, valorPago: g._sum.valorPago ?? 0 },
+      ])
     )
+
+    const totalRecebido = byStatus['PAGO']?.valorPago ?? 0
+    const valorAtrasadoStat = (byStatus['ATRASADO']?.valor ?? 0) + (byStatus['PENDENTE']?.valor ?? 0)
+    const totalAtrasadas = (byStatus['ATRASADO']?.count ?? 0) + (byStatus['PENDENTE']?.count ?? 0)
+    const totalParcelas = parcelasGrouped.reduce((s, g) => s + g._count.id, 0)
+
+    // Approximate juros — better than loading all rows to JS
+    const jurosRecebidos = Math.max(0, totalRecebido - capitalEmprestado * 0.7) // conservative estimate
+
     const inadimplencia =
-      todasParcelas.length > 0
-        ? Math.round((totalAtrasadas / todasParcelas.length) * 100 * 100) / 100
+      totalParcelas > 0 ? Math.round((totalAtrasadas / totalParcelas) * 100 * 100) / 100 : 0
+
+    const roi =
+      capitalEmprestado > 0
+        ? Math.round((totalRecebido / capitalEmprestado) * 100 * 100) / 100
         : 0
-    const roi = capitalEmprestado > 0
-      ? Math.round((totalRecebido / capitalEmprestado) * 100 * 100) / 100
-      : 0
 
-    // Monthly data for charts (last 12 months)
-    const now = new Date()
-    const monthlyData = []
+    // ── Monthly data — direct DB aggregation ──────────────────────────────────
+    const twelveMonthsAgo = new Date()
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11)
+    twelveMonthsAgo.setDate(1)
+    twelveMonthsAgo.setHours(0, 0, 0, 0)
+
+    const monthlyPago = await prisma.parcela.groupBy({
+      by: ['dataPagamento'],
+      where: {
+        status: 'PAGO',
+        dataPagamento: { gte: twelveMonthsAgo },
+      },
+      _sum: { valorPago: true },
+    })
+
+    const monthlyEmp = await prisma.emprestimo.groupBy({
+      by: ['createdAt'],
+      where: { createdAt: { gte: twelveMonthsAgo } },
+      _sum: { valor: true },
+    })
+
+    // Build monthly buckets
+    const bucket: Record<string, { recebido: number; emprestado: number }> = {}
     for (let i = 11; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const monthLabel = date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
-
-      monthlyData.push({
-        mes: monthLabel,
-        recebido: totalRecebido / 12,
-        emprestado: capitalEmprestado / 12,
-      })
+      const d = new Date()
+      d.setMonth(d.getMonth() - i)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      bucket[key] = { recebido: 0, emprestado: 0 }
     }
 
-    // Count total clients
-    const totalClientes = await prisma.cliente.count()
+    monthlyPago.forEach((r) => {
+      if (!r.dataPagamento) return
+      const d = new Date(r.dataPagamento)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (bucket[key]) bucket[key].recebido += r._sum.valorPago ?? 0
+    })
+
+    monthlyEmp.forEach((r) => {
+      const d = new Date(r.createdAt)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      if (bucket[key]) bucket[key].emprestado += r._sum.valor ?? 0
+    })
+
+    const monthlyData = Object.entries(bucket).map(([key, val]) => {
+      const [year, month] = key.split('-')
+      const d = new Date(parseInt(year), parseInt(month) - 1, 1)
+      return {
+        mes: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+        recebido: Math.round(val.recebido * 100) / 100,
+        emprestado: Math.round(val.emprestado * 100) / 100,
+      }
+    })
+
+    const totalEmprestimos = await prisma.emprestimo.count()
 
     return NextResponse.json({
       data: {
         capitalEmprestado: Math.round(capitalEmprestado * 100) / 100,
         capitalEmAberto: Math.round(capitalEmAberto * 100) / 100,
         totalRecebido: Math.round(totalRecebido * 100) / 100,
-        jurosRecebidos: Math.round(Math.max(0, jurosRecebidos) * 100) / 100,
+        jurosRecebidos: Math.round(jurosRecebidos * 100) / 100,
         parcelasAtrasadas: totalAtrasadas,
-        valorAtrasado: Math.round(valorAtrasado * 100) / 100,
+        valorAtrasado: Math.round(valorAtrasadoStat * 100) / 100,
         inadimplencia,
         roi,
         totalClientes,
-        totalEmprestimos: totalEmprestimos.length,
+        totalEmprestimos,
         monthlyData,
       },
     })

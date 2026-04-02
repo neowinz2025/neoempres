@@ -2,13 +2,13 @@ import bcrypt from 'bcryptjs'
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
-if (!process.env.JWT_SECRET) {
-  console.error('FATAL: JWT_SECRET environment variable is not set!')
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error(
+    'FATAL: JWT_SECRET ausente ou muito curto (mínimo 32 caracteres). Sistema não pode iniciar sem esta variável de ambiente.'
+  )
 }
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || ''
-)
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET)
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12)

@@ -2,33 +2,30 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import CryptoJS from 'crypto-js'
 import { sendTelegram } from '@/lib/notifications/telegram'
-import { addMonths, addWeeks, addDays } from 'date-fns'
+import { processarRenovacaoBullet } from '@/lib/bulletRenewal'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
     const fdSignature = request.headers.get('X-Webhook-Signature')
     const atlasSignature = request.headers.get('X-Atlas-Signature')
-    
+
     let isValid = false
 
     if (atlasSignature) {
       const config = await prisma.config.findUnique({ where: { key: 'ATLASDAO_WEBHOOK_SECRET' } })
       const secret = config?.value || process.env.ATLASDAO_WEBHOOK_SECRET || ''
       if (secret) {
-        const expectedSignature = 'sha256=' + CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)
-        if (atlasSignature === expectedSignature || atlasSignature === CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)) {
-          isValid = true
-        }
+        const expected = 'sha256=' + CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)
+        const plain = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)
+        if (atlasSignature === expected || atlasSignature === plain) isValid = true
       }
     } else if (fdSignature) {
       const config = await prisma.config.findUnique({ where: { key: 'FASTDEPIX_WEBHOOK_SECRET' } })
       const secret = config?.value || process.env.FASTDEPIX_WEBHOOK_SECRET || ''
       if (secret) {
-        const expectedSignature = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)
-        if (fdSignature === expectedSignature) {
-          isValid = true
-        }
+        const expected = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)
+        if (fdSignature === expected) isValid = true
       }
     }
 
@@ -44,24 +41,30 @@ export async function POST(request: NextRequest) {
 
     if (event === 'transaction.paid' || event === 'payment.completed') {
       const txId = String(data.data?.id || data.data?.transaction_id || data.id)
-      const amount = data.data?.amount || data.amount
+      const rawAmount = data.data?.amount || data.amount
 
-      // Find parcela by pixTxId
-      const parcela = await prisma.parcela.findFirst({
-        where: { pixTxId: txId },
-        include: { emprestimo: true },
-      })
+      // ── Atomic payment processing with idempotency guard ─────────────────────
+      await prisma.$transaction(async (tx) => {
+        // findFirst inside transaction — row-level lock in Postgres
+        const parcela = await tx.parcela.findFirst({
+          where: { pixTxId: txId },
+          include: { emprestimo: true },
+        })
 
-      if (parcela && parcela.status !== 'PAGO') {
+        // Idempotency: if already paid, do nothing (still return 200)
+        if (!parcela || parcela.status === 'PAGO') return
+
         const previouslyPaid = parcela.valorPago || 0
-        const currentPaid = parseFloat(amount || parcela.valor)
-        const totalPaidNow = previouslyPaid + currentPaid
+        const incoming = parseFloat(String(rawAmount || 0))
 
-        const isPartial = totalPaidNow < parcela.valor
+        // ── Security: validate amount makes sense ─────────────────────────────
+        // Never trust the provider amount for full payment decision
+        const totalPaidNow = previouslyPaid + incoming
+        const isPartial = totalPaidNow < parcela.valor * 0.99
         const newStatus = isPartial ? 'PARCIAL' : 'PAGO'
 
-        // Mark as paid
-        await prisma.parcela.update({
+        // 1. Update installment
+        await tx.parcela.update({
           where: { id: parcela.id },
           data: {
             status: newStatus,
@@ -70,78 +73,53 @@ export async function POST(request: NextRequest) {
           },
         })
 
-        // Update saldo devedor
-        await prisma.emprestimo.update({
+        // 2. Decrement saldo devedor
+        await tx.emprestimo.update({
           where: { id: parcela.emprestimoId },
-          data: {
-            saldoDevedor: { decrement: currentPaid },
-          },
+          data: { saldoDevedor: { decrement: incoming } },
         })
 
-        // Check if all installments paid
-        const pending = await prisma.parcela.count({
-          where: {
-            emprestimoId: parcela.emprestimoId,
-            status: { not: 'PAGO' },
-          },
-        })
-
-        if (pending === 0 && totalPaidNow >= parcela.valor) {
-          await prisma.emprestimo.update({
-            where: { id: parcela.emprestimoId },
-            data: { status: 'QUITADO', saldoDevedor: 0 },
+        // 3. Mark loan QUITADO if all paid
+        if (newStatus === 'PAGO') {
+          const pending = await tx.parcela.count({
+            where: {
+              emprestimoId: parcela.emprestimoId,
+              status: { not: 'PAGO' },
+              id: { not: parcela.id },
+            },
           })
-        }
 
-        // --- LÓGICA RENOVAÇÃO BULLET ---
-        if (parcela.emprestimo.tipo === 'BULLET' && newStatus === 'PAGO') {
-          const interest = parcela.emprestimo.valor * (parcela.emprestimo.jurosDiario / 100)
-          const totalWithPrincipal = parcela.emprestimo.valor + interest
-          
-          if (totalPaidNow < totalWithPrincipal * 0.99) {
-            const nextOne = await prisma.parcela.findFirst({
-              where: { emprestimoId: parcela.emprestimoId, numero: parcela.numero + 1 }
+          if (pending === 0) {
+            await tx.emprestimo.update({
+              where: { id: parcela.emprestimoId },
+              data: { status: 'QUITADO', saldoDevedor: 0 },
             })
-
-            if (!nextOne) {
-              const freq = parcela.emprestimo.frequencia
-              let nextDate = new Date(parcela.vencimento)
-              if (freq === 'DIARIO') nextDate = addDays(nextDate, 1)
-              else if (freq === 'SEMANAL') nextDate = addWeeks(nextDate, 1)
-              else if (freq === 'QUINZENAL') nextDate = addDays(nextDate, 15)
-              else nextDate = addMonths(nextDate, 1)
-
-              await prisma.parcela.create({
-                data: {
-                  emprestimoId: parcela.emprestimoId,
-                  numero: parcela.numero + 1,
-                  valor: parcela.valor,
-                  valorOriginal: parcela.valorOriginal,
-                  vencimento: nextDate,
-                  status: 'PENDENTE'
-                }
-              })
-
-              await prisma.emprestimo.update({
-                where: { id: parcela.emprestimoId },
-                data: { numParcelas: { increment: 1 } }
-              })
-            }
           }
-        }
-        // --- FIM LÓGICA BULLET ---
 
-        await prisma.log.create({
+          // 4. Bullet renewal (shared, idempotent)
+          await processarRenovacaoBullet(
+            { ...parcela, vencimento: new Date(parcela.vencimento) },
+            totalPaidNow,
+            tx as any
+          )
+        }
+
+        // 5. Audit log
+        await tx.log.create({
           data: {
             acao: 'WEBHOOK_PAGAMENTO',
-            detalhes: `Pagamento PIX confirmado - Parcela #${parcela.numero} - TxID: ${txId} - R$ ${currentPaid}`,
+            nivel: 'INFO',
+            entidade: 'PARCELA',
+            entidadeId: parcela.id,
+            detalhes: `PIX confirmado — Parcela #${parcela.numero} — TxID: ${txId} — R$${incoming.toFixed(2)} — ${newStatus}`,
           },
         })
 
-        await sendTelegram(`💰 <b>Novo Pagamento PIX!</b>\n\n<b>Parcela:</b> #${parcela.numero}\n<b>Valor Pago:</b> R$ ${currentPaid.toFixed(2)}\n<b>Via:</b> Webhook Automático\n\n<pre>TxID: ${txId}</pre>`)
-
-        console.log(`[Webhook] Payment confirmed for parcela ${parcela.id}`)
-      }
+        // Telegram (fire-and-forget, outside transaction is fine here but we log internally)
+        sendTelegram(
+          `💰 <b>Novo Pagamento PIX!</b>\n\n<b>Parcela:</b> #${parcela.numero}\n<b>Valor Recebido:</b> R$ ${incoming.toFixed(2)}\n<b>Status:</b> ${newStatus}\n<pre>TxID: ${txId}</pre>`
+        ).catch(console.error)
+      })
     }
 
     return NextResponse.json({ success: true })

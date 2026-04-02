@@ -52,6 +52,15 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
   const [editVencimento, setEditVencimento] = useState('')
   const [editValor, setEditValor] = useState('')
 
+  const [rnModal, setRnModal] = useState(false)
+  const [rnSaving, setRnSaving] = useState(false)
+  const [rnValor, setRnValor] = useState('')
+  const [rnTaxa, setRnTaxa] = useState('')
+  const [rnTipo, setRnTipo] = useState<'PRICE'|'SIMPLE'|'BULLET'>('PRICE')
+  const [rnFreq, setRnFreq] = useState<'DIARIO'|'SEMANAL'|'QUINZENAL'|'MENSAL'>('MENSAL')
+  const [rnParcelas, setRnParcelas] = useState('12')
+  const [rnInicio, setRnInicio] = useState('')
+
   const showToast = (msg: string) => {
     setToastMsg(msg)
     setTimeout(() => setToastMsg(''), 3000)
@@ -74,6 +83,43 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
     } else {
       setIsDeleting(false)
       showToast('Erro ao excluir empréstimo.')
+    }
+  }
+
+  const openRenegociar = () => {
+    if (!emp) return
+    setRnValor(emp.saldoDevedor.toString())
+    setRnTaxa(emp.taxaJuros.toString())
+    setRnTipo(emp.tipo as any)
+    setRnFreq(emp.frequencia)
+    setRnParcelas(emp.numParcelas.toString())
+    setRnInicio(new Date().toISOString().split('T')[0])
+    setRnModal(true)
+  }
+
+  const submitRenegociar = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setRnSaving(true)
+    const res = await fetch(`/api/emprestimos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        renegociar: true,
+        valor: parseFloat(rnValor),
+        taxaJuros: parseFloat(rnTaxa),
+        tipo: rnTipo,
+        numParcelas: parseInt(rnParcelas),
+        frequencia: rnFreq,
+        dataInicio: rnInicio
+      })
+    })
+    setRnSaving(false)
+    if (res.ok) {
+      setRnModal(false)
+      fetchData()
+      showToast('Empréstimo renegociado!')
+    } else {
+      showToast('Erro ao renegociar.')
     }
   }
 
@@ -205,6 +251,13 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
             </p>
           </div>
           <div className="flex flex-col gap-2">
+            <button
+              onClick={openRenegociar}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors text-center"
+              title="Recriar cronograma de parcelas não-pagas usando saldo restante"
+            >
+              🤝 Renegociar
+            </button>
             <button
               onClick={() => navigator.clipboard.writeText(`${window.location.origin}/cliente/${emp.cliente.token}`).then(()=>showToast('Link copiado!'))}
               className="btn-secondary btn-sm"
@@ -402,6 +455,56 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
           </div>
           <p className="text-xs text-red-400 mt-2 bg-red-400/10 p-2 rounded">Atenção: Modificar estes valores afeta relatórios retroativamente e altera o cálculo automático atual de juros de atraso.</p>
           <button type="submit" className="btn-primary w-full mt-4 justify-center">Salvar Ajustes</button>
+        </form>
+      </Modal>
+
+      <Modal isOpen={rnModal} onClose={() => setRnModal(false)} title="Renegociar Empréstimo">
+        <form onSubmit={submitRenegociar} className="space-y-4">
+          <p className="text-sm text-text-secondary mb-4 bg-white/5 p-3 rounded-lg border border-yellow-500/30 text-yellow-100">
+            Esta ação <strong>apagará</strong> permanentemente as parcelas pendentes atuais e recriará um cronograma completamente novo a partir das informações informadas abaixo.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1 text-text-secondary">Novo Saldo (R$)</label>
+              <input type="number" step="0.01" value={rnValor} onChange={e => setRnValor(e.target.value)} className="input-field" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-text-secondary">Nova Taxa (%)</label>
+              <input type="number" step="0.01" value={rnTaxa} onChange={e => setRnTaxa(e.target.value)} className="input-field" required />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1 text-text-secondary">Tipo do Empréstimo</label>
+              <select value={rnTipo} onChange={e => setRnTipo(e.target.value as any)} className="select-field">
+                <option value="PRICE">Price (Fixa)</option>
+                <option value="SIMPLE">Juros Simples</option>
+                <option value="BULLET">Pagar só Juros (Bullet)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-text-secondary">Nova Frequência</label>
+              <select value={rnFreq} onChange={e => setRnFreq(e.target.value as any)} className="select-field">
+                <option value="MENSAL">Mensal</option>
+                <option value="QUINZENAL">Quinzenal</option>
+                <option value="SEMANAL">Semanal</option>
+                <option value="DIARIO">Diário</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1 text-text-secondary">Qtd Total Parcelas</label>
+              <input type="number" value={rnParcelas} onChange={e => setRnParcelas(e.target.value)} className="input-field" required min="1" max="150" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-text-secondary">Data da 1ª Parcela</label>
+              <input type="date" value={rnInicio} onChange={e => setRnInicio(e.target.value)} className="input-field" required />
+            </div>
+          </div>
+          <button type="submit" disabled={rnSaving} className="btn-primary w-full mt-4 justify-center">
+            {rnSaving ? 'Gerando Novo Cronograma...' : 'Confirmar e Subjetar'}
+          </button>
         </form>
       </Modal>
 

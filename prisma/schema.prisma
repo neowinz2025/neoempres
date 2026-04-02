@@ -121,6 +121,9 @@ model Emprestimo {
   updatedAt    DateTime            @updatedAt
   parcelas     Parcela[]
 
+  @@index([clienteId])
+  @@index([status])
+  @@index([createdAt])
   @@map("emprestimos")
 }
 
@@ -144,18 +147,30 @@ model Parcela {
   updatedAt      DateTime      @updatedAt
   notificacoes   Notificacao[]
 
+  @@index([emprestimoId])
+  @@index([status])
+  @@index([vencimento])
+  @@index([pixTxId])
+  @@index([status, vencimento])
   @@map("parcelas")
 }
 
 model Log {
-  id        String   @id @default(cuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  acao      String
-  detalhes  String?
-  ip        String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  acao        String
+  detalhes    String?
+  ip          String?
+  userAgent   String?
+  nivel       String   @default("INFO")
+  entidade    String?
+  entidadeId  String?
+  createdAt   DateTime @default(now())
 
+  @@index([acao])
+  @@index([entidadeId])
+  @@index([createdAt])
   @@map("logs")
 }
 

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { calcSimulacao } from '@/lib/calculations'
+import { CreateEmprestimoSchema, validateParcelasCustomizadas } from '@/lib/validators'
+import { z } from 'zod'
 
 export async function GET(request: NextRequest) {
   const session = await getSession()
@@ -12,8 +14,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
   const clienteId = searchParams.get('clienteId')
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
   const skip = (page - 1) * limit
 
   const where: Record<string, unknown> = {}
@@ -48,28 +50,27 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json()
-    const { clienteId, valor, taxaJuros, tipo, numParcelas, dataInicio, multaPercent, jurosDiario, frequencia, produtoId, parcelasCustomizadas } = body
+    const rawBody = await request.json()
+    const parsed = CreateEmprestimoSchema.safeParse(rawBody)
 
-    if (!clienteId || !valor || taxaJuros === undefined || !tipo || !numParcelas) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Campos obrigatórios: clienteId, valor, taxaJuros, tipo, numParcelas' },
+        { error: 'Dados inválidos', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       )
     }
 
-    // Validate numerical ranges
-    if (typeof valor !== 'number' || valor <= 0 || valor > 10_000_000) {
-      return NextResponse.json({ error: 'Valor inválido' }, { status: 400 })
-    }
-    if (typeof taxaJuros !== 'number' || taxaJuros < 0 || taxaJuros > 100) {
-      return NextResponse.json({ error: 'Taxa de juros inválida' }, { status: 400 })
-    }
-    if (typeof numParcelas !== 'number' || numParcelas < 1 || numParcelas > 360) {
-      return NextResponse.json({ error: 'Número de parcelas inválido' }, { status: 400 })
-    }
-    if (!['PRICE', 'SIMPLE', 'BULLET'].includes(tipo)) {
-      return NextResponse.json({ error: 'Tipo de empréstimo inválido' }, { status: 400 })
+    const {
+      clienteId, valor, taxaJuros, tipo, numParcelas, dataInicio,
+      multaPercent, jurosDiario, frequencia, produtoId, parcelasCustomizadas,
+    } = parsed.data
+
+    // Validate custom installments if provided
+    if (parcelasCustomizadas && parcelasCustomizadas.length > 0) {
+      const validationError = validateParcelasCustomizadas(parcelasCustomizadas, valor)
+      if (validationError) {
+        return NextResponse.json({ error: validationError }, { status: 400 })
+      }
     }
 
     const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } })
@@ -90,8 +91,8 @@ export async function POST(request: NextRequest) {
     let finalSaldoDevedor = simulacao.totalPago
     let finalValorParcela = simulacao.valorParcela
 
-    if (parcelasCustomizadas && Array.isArray(parcelasCustomizadas) && parcelasCustomizadas.length > 0) {
-      finalParcelas = parcelasCustomizadas.map((p: any) => ({
+    if (parcelasCustomizadas && parcelasCustomizadas.length > 0) {
+      finalParcelas = parcelasCustomizadas.map((p) => ({
         numero: p.numero,
         valor: p.valor,
         valorOriginal: p.valor,
@@ -101,40 +102,52 @@ export async function POST(request: NextRequest) {
       finalValorParcela = finalParcelas[0].valor
     }
 
-    const emprestimo = await prisma.emprestimo.create({
-      data: {
-        clienteId,
-        produtoId: produtoId || null,
-        valor,
-        taxaJuros,
-        tipo,
-        frequencia: freqVal,
-        numParcelas: finalParcelas.length,
-        valorParcela: finalValorParcela,
-        saldoDevedor: finalSaldoDevedor,
-        multaPercent: multaPercent ?? 2.0,
-        jurosDiario: jurosDiario ?? 0.033,
-        parcelas: {
-          create: finalParcelas,
+    // Use $transaction for atomicity
+    const emprestimo = await prisma.$transaction(async (tx) => {
+      const emp = await tx.emprestimo.create({
+        data: {
+          clienteId,
+          produtoId: produtoId || null,
+          valor,
+          taxaJuros,
+          tipo,
+          frequencia: freqVal,
+          numParcelas: finalParcelas.length,
+          valorParcela: finalValorParcela,
+          saldoDevedor: finalSaldoDevedor,
+          multaPercent: multaPercent ?? 2.0,
+          jurosDiario: jurosDiario ?? 0.033,
+          parcelas: {
+            create: finalParcelas,
+          },
         },
-      },
-      include: {
-        parcelas: { orderBy: { numero: 'asc' } },
-        cliente: true,
-        produto: true,
-      },
-    })
+        include: {
+          parcelas: { orderBy: { numero: 'asc' } },
+          cliente: true,
+          produto: true,
+        },
+      })
 
-    await prisma.log.create({
-      data: {
-        userId: session.userId,
-        acao: 'CRIAR_EMPRESTIMO',
-        detalhes: `Empréstimo de R$ ${valor} criado para ${cliente.nome}`,
-      },
+      await tx.log.create({
+        data: {
+          userId: session.userId,
+          acao: 'CRIAR_EMPRESTIMO',
+          nivel: 'INFO',
+          entidade: 'EMPRESTIMO',
+          entidadeId: emp.id,
+          detalhes: `Empréstimo de R$ ${valor} criado para ${cliente.nome}`,
+          ip: request.headers.get('x-forwarded-for') ?? undefined,
+        },
+      })
+
+      return emp
     })
 
     return NextResponse.json({ data: emprestimo }, { status: 201 })
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Dados inválidos', details: error.flatten() }, { status: 400 })
+    }
     console.error('Error creating loan:', error)
     return NextResponse.json({ error: 'Erro ao criar empréstimo' }, { status: 500 })
   }

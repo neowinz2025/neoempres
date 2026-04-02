@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { UpdateParcelaSchema } from '@/lib/validators'
+import { processarRenovacaoBullet } from '@/lib/bulletRenewal'
 import { sendTelegram } from '@/lib/notifications/telegram'
-import { addMonths, addWeeks, addDays } from 'date-fns'
 
 export async function PUT(
   request: NextRequest,
@@ -14,8 +15,18 @@ export async function PUT(
   }
 
   const { id } = await params
-  const body = await request.json()
-  const { status, valorPago, dataPagamento, formaPagamento, comprovante, vencimento, valorOriginal } = body
+
+  // Validate schema
+  const rawBody = await request.json()
+  const parsed = UpdateParcelaSchema.safeParse(rawBody)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Dados inválidos', details: parsed.error.flatten().fieldErrors },
+      { status: 400 }
+    )
+  }
+
+  const { status, valorPago, dataPagamento, formaPagamento, comprovante, vencimento, valorOriginal } = parsed.data
 
   try {
     const parcela = await prisma.parcela.findUnique({
@@ -27,119 +38,114 @@ export async function PUT(
       return NextResponse.json({ error: 'Parcela não encontrada' }, { status: 404 })
     }
 
-    const updateData: Record<string, unknown> = {}
-    if (status) updateData.status = status
-    if (valorPago !== undefined) updateData.valorPago = valorPago
-    if (dataPagamento) updateData.dataPagamento = new Date(dataPagamento)
-    
-    // Updates adicionais para a funcionalidade de renegociação / registro de pagamento
-    if (formaPagamento !== undefined) updateData.formaPagamento = formaPagamento
-    if (comprovante !== undefined) updateData.comprovante = comprovante
-    if (vencimento !== undefined) updateData.vencimento = new Date(vencimento)
-    if (valorOriginal !== undefined) updateData.valorOriginal = parseFloat(valorOriginal)
+    // ── Non-payment edits (vencimento/valorOriginal only) ─────────────────────
+    if (!status && (vencimento !== undefined || valorOriginal !== undefined)) {
+      const updated = await prisma.parcela.update({
+        where: { id },
+        data: {
+          ...(vencimento !== undefined && { vencimento: new Date(vencimento) }),
+          ...(valorOriginal !== undefined && { valorOriginal }),
+        },
+      })
 
+      await prisma.log.create({
+        data: {
+          userId: session.userId,
+          acao: 'EDITAR_PARCELA',
+          nivel: 'INFO',
+          entidade: 'PARCELA',
+          entidadeId: id,
+          detalhes: `Parcela #${parcela.numero} editada`,
+        },
+      })
+
+      return NextResponse.json({ data: updated })
+    }
+
+    // ── Payment flow — ATOMIC ─────────────────────────────────────────────────
     if (status === 'PAGO' || status === 'PARCIAL') {
-      const isStatusChange = parcela.status !== status
       const previouslyPaid = parcela.valorPago || 0
       const currentTotalPaid = valorPago !== undefined ? valorPago : parcela.valor
-      
       const newPaymentAmount = currentTotalPaid - previouslyPaid
 
-      updateData.dataPagamento = dataPagamento ? new Date(dataPagamento) : new Date()
-      updateData.valorPago = currentTotalPaid
-      
-      // Se não pagou tudo, força o status para PARCIAL
-      if (currentTotalPaid < parcela.valor && status === 'PAGO') {
-        updateData.status = 'PARCIAL'
-      }
+      // Enforce correct partial status
+      const finalStatus = currentTotalPaid < parcela.valor ? 'PARCIAL' : 'PAGO'
 
-      if (newPaymentAmount > 0) {
-        // Update saldo devedor
-        await prisma.emprestimo.update({
-          where: { id: parcela.emprestimoId },
+      const updated = await prisma.$transaction(async (tx) => {
+        // 1. Update installment
+        const upd = await tx.parcela.update({
+          where: { id },
           data: {
-            saldoDevedor: { decrement: newPaymentAmount },
-          },
-        })
-      }
-
-      if (updateData.status === 'PAGO' || status === 'PAGO') {
-        // Check if all installments are paid
-        const pendingCount = await prisma.parcela.count({
-          where: {
-            emprestimoId: parcela.emprestimoId,
-            status: { not: 'PAGO' },
-            id: { not: id },
+            status: finalStatus,
+            dataPagamento: dataPagamento ? new Date(dataPagamento) : new Date(),
+            valorPago: currentTotalPaid,
+            ...(formaPagamento !== undefined && { formaPagamento }),
+            ...(comprovante !== undefined && { comprovante }),
           },
         })
 
-        if (pendingCount === 0 && currentTotalPaid >= parcela.valor) {
-          await prisma.emprestimo.update({
+        // 2. Decrement saldo devedor (only for new payment amount)
+        if (newPaymentAmount > 0) {
+          await tx.emprestimo.update({
             where: { id: parcela.emprestimoId },
-            data: { status: 'QUITADO', saldoDevedor: 0 },
+            data: { saldoDevedor: { decrement: newPaymentAmount } },
           })
         }
 
-        // --- LÓGICA RENOVAÇÃO BULLET ---
-        if (parcela.emprestimo.tipo === 'BULLET') {
-          const interest = parcela.emprestimo.valor * (parcela.emprestimo.jurosDiario / 100)
-          const totalWithPrincipal = parcela.emprestimo.valor + interest
-          
-          // Se pagou juros mas não pagou o principal todo
-          if (currentTotalPaid < totalWithPrincipal * 0.99) {
-            // Verifica se já existe a próxima
-            const nextOne = await prisma.parcela.findFirst({
-              where: { emprestimoId: parcela.emprestimoId, numero: parcela.numero + 1 }
+        // 3. Mark loan as QUITADO if all installments are paid
+        if (finalStatus === 'PAGO') {
+          const pendingCount = await tx.parcela.count({
+            where: {
+              emprestimoId: parcela.emprestimoId,
+              status: { not: 'PAGO' },
+              id: { not: id },
+            },
+          })
+
+          if (pendingCount === 0 && currentTotalPaid >= parcela.valor) {
+            await tx.emprestimo.update({
+              where: { id: parcela.emprestimoId },
+              data: { status: 'QUITADO', saldoDevedor: 0 },
             })
-
-            if (!nextOne) {
-              const freq = parcela.emprestimo.frequencia
-              let nextDate = new Date(parcela.vencimento)
-              if (freq === 'DIARIO') nextDate = addDays(nextDate, 1)
-              else if (freq === 'SEMANAL') nextDate = addWeeks(nextDate, 1)
-              else if (freq === 'QUINZENAL') nextDate = addDays(nextDate, 15)
-              else nextDate = addMonths(nextDate, 1)
-
-              await prisma.parcela.create({
-                data: {
-                  emprestimoId: parcela.emprestimoId,
-                  numero: parcela.numero + 1,
-                  valor: parcela.valor, // Mantém o valor (que no Bullet da última é Juros+Principal)
-                  valorOriginal: parcela.valorOriginal,
-                  vencimento: nextDate,
-                  status: 'PENDENTE'
-                }
-              })
-
-              await prisma.emprestimo.update({
-                where: { id: parcela.emprestimoId },
-                data: { numParcelas: { increment: 1 } }
-              })
-            }
           }
+
+          // 4. Bullet renewal (idempotent — checked inside)
+          await processarRenovacaoBullet(
+            { ...parcela, vencimento: new Date(parcela.vencimento) },
+            currentTotalPaid,
+            tx as any
+          )
         }
-        // --- FIM LÓGICA BULLET ---
-      }
+
+        // 5. Audit log
+        await tx.log.create({
+          data: {
+            userId: session.userId,
+            acao: 'PAGAMENTO_PARCELA',
+            nivel: 'INFO',
+            entidade: 'PARCELA',
+            entidadeId: id,
+            detalhes: `Parcela #${parcela.numero} do Empréstimo ${parcela.emprestimoId} — R$${currentTotalPaid.toFixed(2)} — ${finalStatus}`,
+            ip: request.headers.get('x-forwarded-for') ?? undefined,
+          },
+        })
+
+        return upd
+      })
+
+      // Send Telegram notification (outside transaction — non-critical)
+      sendTelegram(
+        `💵 <b>Pagamento Manual Registrado</b>\n\n<b>Parcela:</b> #${parcela.numero}\n<b>Valor Pago:</b> R$ ${currentTotalPaid.toFixed(2)}\n<b>Status:</b> ${finalStatus}\n<b>Via:</b> ${formaPagamento || 'Painel Admin'}`
+      ).catch(console.error)
+
+      return NextResponse.json({ data: updated })
     }
 
+    // ── Simple status update (e.g. PENDENTE/ATRASADO) ─────────────────────────
     const updated = await prisma.parcela.update({
       where: { id },
-      data: updateData,
+      data: { ...(status && { status }) },
     })
-
-    await prisma.log.create({
-      data: {
-        userId: session.userId,
-        acao: 'ATUALIZAR_PARCELA',
-        detalhes: `Parcela #${parcela.numero} do empréstimo ${parcela.emprestimoId} atualizada para ${status}`,
-      },
-    })
-    
-    if (status === 'PAGO' || status === 'PARCIAL') {
-      await sendTelegram(
-        `💵 <b>Pagamento Manual Registrado</b>\n\n<b>Parcela:</b> #${parcela.numero}\n<b>Valor Pago Orig./Atual:</b> R$ ${parcela.valor.toFixed(2)} / R$ ${Number(valorPago || parcela.valorPago || parcela.valor).toFixed(2)}\n<b>Status Atual:</b> ${status === 'PARCIAL' ? 'Parcial' : 'Pago'}\n<b>Via:</b> ${formaPagamento || 'Painel Admin'}`
-      )
-    }
 
     return NextResponse.json({ data: updated })
   } catch (error) {
