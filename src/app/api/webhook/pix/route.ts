@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         // findFirst inside transaction — row-level lock in Postgres
         const parcela = await tx.parcela.findFirst({
           where: { pixTxId: txId },
-          include: { emprestimo: true },
+          include: { emprestimo: { include: { cliente: true } } },
         })
 
         // Idempotency: if already paid, do nothing (still return 200)
@@ -116,8 +116,23 @@ export async function POST(request: NextRequest) {
         })
 
         // Telegram (fire-and-forget, outside transaction is fine here but we log internally)
+        const pixEmoji = newStatus === 'PAGO' ? '✅' : '⏳'
+        const pixStatusLabel = newStatus === 'PAGO' ? 'Pago integralmente via PIX' : 'Pagamento parcial via PIX'
+        const pixRestante = newStatus === 'PARCIAL'
+          ? `\n⚠️ <b>Restante para quitar:</b> R$ ${(parcela.valor - totalPaidNow).toFixed(2)}`
+          : ''
+        const clienteNome = parcela.emprestimo?.cliente?.nome ?? ''
+
         sendTelegram(
-          `💰 <b>Novo Pagamento PIX!</b>\n\n<b>Parcela:</b> #${parcela.numero}\n<b>Valor Recebido:</b> R$ ${incoming.toFixed(2)}\n<b>Status:</b> ${newStatus}\n<pre>TxID: ${txId}</pre>`
+          `${pixEmoji} <b>Pagamento PIX Confirmado</b>\n` +
+          `━━━━━━━━━━━━━━━━━━━\n` +
+          `👤 <b>Cliente:</b> ${clienteNome}\n` +
+          `📋 <b>Parcela:</b> #${parcela.numero}\n` +
+          `💰 <b>Valor recebido:</b> R$ ${incoming.toFixed(2)}\n` +
+          `📊 <b>Total pago na parcela:</b> R$ ${totalPaidNow.toFixed(2)} / R$ ${parcela.valor.toFixed(2)}\n` +
+          `📌 <b>Status:</b> ${pixStatusLabel}` +
+          pixRestante + `\n` +
+          `🔑 <code>TxID: ${txId}</code>`
         ).catch(console.error)
       })
     }

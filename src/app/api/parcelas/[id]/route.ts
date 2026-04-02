@@ -134,8 +134,23 @@ export async function PUT(
       })
 
       // Send Telegram notification (outside transaction — non-critical)
+      const clienteNome = (parcela as any).emprestimo?.cliente?.nome ?? '—'
+      const emoji = finalStatus === 'PAGO' ? '✅' : '⏳'
+      const statusLabel = finalStatus === 'PAGO' ? 'Pago integralmente' : 'Pagamento parcial'
+      const restante = finalStatus === 'PARCIAL'
+        ? `\n💳 <b>Saldo restante:</b> R$ ${(parcela.valor - currentTotalPaid).toFixed(2)}`
+        : ''
+
       sendTelegram(
-        `💵 <b>Pagamento Manual Registrado</b>\n\n<b>Parcela:</b> #${parcela.numero}\n<b>Valor Pago:</b> R$ ${currentTotalPaid.toFixed(2)}\n<b>Status:</b> ${finalStatus}\n<b>Via:</b> ${formaPagamento || 'Painel Admin'}`
+        `${emoji} <b>Pagamento Registrado</b>\n` +
+        `━━━━━━━━━━━━━━━━━━━\n` +
+        `👤 <b>Cliente:</b> ${clienteNome}\n` +
+        `📋 <b>Parcela:</b> #${parcela.numero}\n` +
+        `💰 <b>Valor pago agora:</b> R$ ${(currentTotalPaid - (parcela.valorPago || 0) > 0 ? currentTotalPaid - (parcela.valorPago || 0) : currentTotalPaid).toFixed(2)}\n` +
+        `📊 <b>Total pago na parcela:</b> R$ ${currentTotalPaid.toFixed(2)}\n` +
+        `📌 <b>Status:</b> ${statusLabel}` +
+        restante + `\n` +
+        `💳 <b>Forma:</b> ${formaPagamento || 'Painel Administrativo'}`
       ).catch(console.error)
 
       return NextResponse.json({ data: updated })

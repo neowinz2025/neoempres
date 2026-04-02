@@ -114,14 +114,63 @@ export async function GET(request: NextRequest) {
 
     // Send Telegram Notification to Admin if there are overdue installments
     if (atrasadosList.length > 0) {
-      let tMsg = `⚠️ <b>Relatório de Atrasos - ${now.toLocaleDateString('pt-BR')}</b>\n\n`
-      atrasadosList.sort((a, b) => b.dias - a.dias).forEach(item => {
-        tMsg += `• <b>${item.cliente}</b> (Parc #${item.numero})\n`
-        tMsg += `  Atraso: ${item.dias} dias | Valor: ${formatCurrency(item.valor)}\n\n`
-      })
-      tMsg += `<i>Total de ${atrasadosList.length} parcelas em aberto.</i>`
-      
+      const sorted = atrasadosList.sort((a, b) => b.dias - a.dias)
+
+      // Group by severity
+      const criticos = sorted.filter(i => i.dias >= 7)
+      const urgentes = sorted.filter(i => i.dias >= 3 && i.dias < 7)
+      const recentes = sorted.filter(i => i.dias > 0 && i.dias < 3)
+
+      const totalEmAberto = sorted.reduce((s, i) => s + i.valor, 0)
+
+      let tMsg = `📋 <b>Relatório Diário de Inadimplência</b>\n`
+      tMsg += `📅 ${now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}\n`
+      tMsg += `━━━━━━━━━━━━━━━━━━━\n\n`
+
+      tMsg += `📊 <b>Resumo:</b>\n`
+      tMsg += `• Total de parcelas em aberto: <b>${atrasadosList.length}</b>\n`
+      tMsg += `• Valor total em risco: <b>${formatCurrency(totalEmAberto)}</b>\n`
+      if (criticos.length)  tMsg += `• 🔴 Crítico (7+ dias): <b>${criticos.length}</b>\n`
+      if (urgentes.length)  tMsg += `• 🟡 Urgente (3-6 dias): <b>${urgentes.length}</b>\n`
+      if (recentes.length)  tMsg += `• 🔵 Recente (1-2 dias): <b>${recentes.length}</b>\n`
+
+      if (criticos.length) {
+        tMsg += `\n🔴 <b>CRÍTICOS — Ação Imediata</b>\n`
+        criticos.forEach(item => {
+          tMsg += `┌ 👤 ${item.cliente}\n`
+          tMsg += `│ Parcela #${item.numero} • Atraso: ${item.dias} dias\n`
+          tMsg += `└ 💰 ${formatCurrency(item.valor)}\n`
+        })
+      }
+
+      if (urgentes.length) {
+        tMsg += `\n🟡 <b>URGENTES — Cobrar Hoje</b>\n`
+        urgentes.forEach(item => {
+          tMsg += `┌ 👤 ${item.cliente}\n`
+          tMsg += `│ Parcela #${item.numero} • Atraso: ${item.dias} dias\n`
+          tMsg += `└ 💰 ${formatCurrency(item.valor)}\n`
+        })
+      }
+
+      if (recentes.length) {
+        tMsg += `\n🔵 <b>RECENTES — Acompanhar</b>\n`
+        recentes.forEach(item => {
+          tMsg += `• ${item.cliente} — Parc #${item.numero} — ${formatCurrency(item.valor)}\n`
+        })
+      }
+
+      tMsg += `\n<i>Notificações enviadas: ${results.reminders + results.charges + results.urgents + results.finals} | Erros: ${results.errors}</i>`
+
       await sendTelegram(tMsg)
+    } else {
+      // Sem atrasos — só envia se for uma segunda-feira (não spama todo dia)
+      if (now.getDay() === 1) {
+        await sendTelegram(
+          `✅ <b>Relatório Semanal — Sem Inadimplência</b>\n` +
+          `📅 ${now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}\n\n` +
+          `Todas as parcelas estão em dia. Ótimo desempenho! 🎉`
+        )
+      }
     }
 
     await prisma.log.create({
