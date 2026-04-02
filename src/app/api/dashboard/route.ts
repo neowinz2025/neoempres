@@ -34,6 +34,17 @@ export async function GET() {
       prisma.cliente.count(),
     ])
 
+    // Número de empréstimos ativos com ao menos 1 parcela ATRASADA (métrica real de inadimplência)
+    const [emprestimosAtivosTotal, emprestimosInadimplentes] = await Promise.all([
+      prisma.emprestimo.count({ where: { status: { in: ['ATIVO', 'RENEGOCIADO'] } } }),
+      prisma.emprestimo.count({
+        where: {
+          status: { in: ['ATIVO', 'RENEGOCIADO'] },
+          parcelas: { some: { status: 'ATRASADO' } },
+        },
+      }),
+    ])
+
     const capitalEmprestado = empAgg._sum.valor ?? 0
     const capitalEmAberto = empAtivoAgg._sum.saldoDevedor ?? 0
 
@@ -46,15 +57,25 @@ export async function GET() {
     )
 
     const totalRecebido = byStatus['PAGO']?.valorPago ?? 0
-    const valorAtrasadoStat = (byStatus['ATRASADO']?.valor ?? 0) + (byStatus['PENDENTE']?.valor ?? 0)
-    const totalAtrasadas = (byStatus['ATRASADO']?.count ?? 0) + (byStatus['PENDENTE']?.count ?? 0)
+
+    // ✅ valorAtrasado: apenas parcelas com status ATRASADO (cron já as marcou)
+    // Parcelas PENDENTE ainda não vencidas NÃO entram aqui.
+    const valorAtrasadoStat = byStatus['ATRASADO']?.valor ?? 0
+    const totalAtrasadas = byStatus['ATRASADO']?.count ?? 0
+
+    // Parcelas parcialmente pagas também têm saldo em risco
+    const valorParcial = (byStatus['PARCIAL']?.valor ?? 0) - (byStatus['PARCIAL']?.valorPago ?? 0)
+
     const totalParcelas = parcelasGrouped.reduce((s, g) => s + g._count.id, 0)
 
-    // Approximate juros — better than loading all rows to JS
-    const jurosRecebidos = Math.max(0, totalRecebido - capitalEmprestado * 0.7) // conservative estimate
-
+    // ✅ Inadimplência = % de contratos ativos com ao menos 1 parcela ATRASADA
     const inadimplencia =
-      totalParcelas > 0 ? Math.round((totalAtrasadas / totalParcelas) * 100 * 100) / 100 : 0
+      emprestimosAtivosTotal > 0
+        ? Math.round((emprestimosInadimplentes / emprestimosAtivosTotal) * 100 * 100) / 100
+        : 0
+
+    // Juros aproximados — evitamos carregar todas as linhas em memória
+    const jurosRecebidos = Math.max(0, totalRecebido - capitalEmprestado * 0.7)
 
     const roi =
       capitalEmprestado > 0
@@ -124,7 +145,10 @@ export async function GET() {
         jurosRecebidos: Math.round(jurosRecebidos * 100) / 100,
         parcelasAtrasadas: totalAtrasadas,
         valorAtrasado: Math.round(valorAtrasadoStat * 100) / 100,
-        inadimplencia,
+        valorParcialRisco: Math.round(valorParcial * 100) / 100, // saldo restante de pagamentos parciais
+        inadimplencia, // % de contratos ativos com ao menos 1 parcela ATRASADA
+        emprestimosInadimplentes, // quantidade absoluta de contratos inadimplentes
+        emprestimosAtivos: emprestimosAtivosTotal,
         roi,
         totalClientes,
         totalEmprestimos,
