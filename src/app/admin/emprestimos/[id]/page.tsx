@@ -61,9 +61,38 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
   const [rnParcelas, setRnParcelas] = useState('12')
   const [rnInicio, setRnInicio] = useState('')
 
+  const [comprovanteModal, setComprovanteModal] = useState<{ isOpen: boolean; src: string; isPdf: boolean }>({ isOpen: false, src: '', isPdf: false })
+
   const showToast = (msg: string) => {
     setToastMsg(msg)
     setTimeout(() => setToastMsg(''), 3000)
+  }
+
+  /** Open base64 comprovante safely — converts to Blob URL to bypass browser base64 navigation block */
+  const openComprovante = (base64: string) => {
+    try {
+      const isPdf = base64.startsWith('data:application/pdf')
+      // Try to open in a new tab via blob first
+      const [header, data] = base64.split(',')
+      const mime = header.match(/:(.*?);/)?.[1] || (isPdf ? 'application/pdf' : 'image/jpeg')
+      const binary = atob(data)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      const blob = new Blob([bytes], { type: mime })
+      const url = URL.createObjectURL(blob)
+
+      if (isPdf) {
+        window.open(url, '_blank')
+        // Clean up after 60s
+        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      } else {
+        // Images: show inside modal for better UX
+        setComprovanteModal({ isOpen: true, src: url, isPdf: false })
+      }
+    } catch {
+      // Fallback: show modal with raw base64 as img src
+      setComprovanteModal({ isOpen: true, src: base64, isPdf: false })
+    }
   }
 
   const fetchData = useCallback(async () => {
@@ -320,9 +349,12 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
                         <span>{fmtDate(p.dataPagamento)} — {fmt(p.valorPago || 0)}</span>
                         {p.formaPagamento && <span className="text-xs text-text-muted">via {p.formaPagamento}</span>}
                         {p.comprovante && (
-                          <a href={p.comprovante} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline mt-0.5">
-                            Ver Comprovante
-                          </a>
+                          <button
+                            onClick={() => openComprovante(p.comprovante!)}
+                            className="text-xs text-accent hover:underline mt-0.5 text-left"
+                          >
+                            📎 Ver Comprovante
+                          </button>
                         )}
                       </div>
                     ) : '—'}
@@ -507,6 +539,52 @@ export default function EmprestimoDetailPage({ params }: { params: Promise<{ id:
           </button>
         </form>
       </Modal>
+
+      {/* Modal Comprovante Anexado */}
+      {comprovanteModal.isOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => {
+            URL.revokeObjectURL(comprovanteModal.src)
+            setComprovanteModal({ isOpen: false, src: '', isPdf: false })
+          }}
+        >
+          <div
+            className="relative max-w-2xl w-full max-h-[90vh] flex flex-col bg-[#1e1e2e] rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <span className="font-semibold text-sm">📎 Comprovante Anexado</span>
+              <div className="flex gap-2">
+                <a
+                  href={comprovanteModal.src}
+                  download="comprovante"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-accent/20 text-accent hover:bg-accent/30 transition-colors font-semibold"
+                >
+                  ⬇️ Baixar
+                </a>
+                <button
+                  onClick={() => {
+                    URL.revokeObjectURL(comprovanteModal.src)
+                    setComprovanteModal({ isOpen: false, src: '', isPdf: false })
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  ✕ Fechar
+                </button>
+              </div>
+            </div>
+            <div className="overflow-auto flex-1 flex items-center justify-center p-4 bg-black/30">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={comprovanteModal.src}
+                alt="Comprovante de pagamento"
+                className="max-w-full max-h-[70vh] rounded-lg object-contain shadow-xl"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
