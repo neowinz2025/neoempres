@@ -340,29 +340,53 @@ export default function ConfiguracoesPage() {
               </ol>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
               <button
                 type="button"
                 disabled={testingBot}
                 onClick={async () => {
                   setTestingBot(true)
                   try {
-                    const res = await fetch('/api/telegram/test', { 
+                    // First run diagnostic to check state
+                    const diagRes = await fetch('/api/telegram/diagnostico')
+                    const diagData = await diagRes.json()
+                    const diag = diagData.data
+
+                    if (diag?.tokenCorrupted || diag?.chatCorrupted) {
+                      showToast('⚠️ Token ou Chat ID corrompido no banco. Reinsira os valores e salve antes de testar.', 'error')
+                      setTestingBot(false)
+                      return
+                    }
+
+                    if (!diag?.hasToken || !diag?.hasChat) {
+                      showToast('Token ou Chat ID não configurado. Preencha os campos e salve.', 'error')
+                      setTestingBot(false)
+                      return
+                    }
+
+                    if (diag?.apiStatus === 'INVALID_TOKEN') {
+                      showToast(`Token inválido na API do Telegram: ${diag.apiError}`, 'error')
+                      setTestingBot(false)
+                      return
+                    }
+
+                    // Actually send test message
+                    const res = await fetch('/api/telegram/test', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
-                        botToken: configs['TELEGRAM_BOT_TOKEN'],
-                        chatId: configs['TELEGRAM_CHAT_ID']
+                        botToken: configs['TELEGRAM_BOT_TOKEN']?.includes('•') ? undefined : configs['TELEGRAM_BOT_TOKEN'],
+                        chatId: configs['TELEGRAM_CHAT_ID']?.includes('•') ? undefined : configs['TELEGRAM_CHAT_ID'],
                       })
                     })
                     if (res.ok) {
-                      showToast('Mensagem enviada com sucesso! Verifique seu Telegram.', 'success')
+                      showToast('✅ Mensagem enviada! Verifique seu Telegram.', 'success')
                     } else {
-                      const errData = await res.json().catch(() => ({ error: 'Resposta inválida do servidor.' }))
-                      showToast(`Telegram negou o envio: ${errData.error || 'Erro Desconhecido'}`, 'error')
+                      const errData = await res.json().catch(() => ({ error: 'Resposta inválida.' }))
+                      showToast(`Falha: ${errData.error}`, 'error')
                     }
-                  } catch (err) {
-                    showToast('Erro de rede: Falha na conexão.', 'error')
+                  } catch {
+                    showToast('Erro de rede: falha na conexão.', 'error')
                   } finally {
                     setTestingBot(false)
                   }
@@ -372,7 +396,38 @@ export default function ConfiguracoesPage() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                 {testingBot ? 'Testando...' : 'Testar Conexão'}
               </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/telegram/diagnostico')
+                    const data = await res.json()
+                    const d = data.data
+                    if (!d) { showToast('Erro ao buscar diagnóstico.', 'error'); return }
+
+                    const lines = [
+                      `Token: ${d.hasToken ? (d.tokenCorrupted ? '⚠️ CORROMPIDO — reinsira' : '✅ OK') : '❌ Ausente'}`,
+                      `Chat ID: ${d.hasChat ? (d.chatCorrupted ? '⚠️ CORROMPIDO — reinsira' : `✅ ${d.chatId}`) : '❌ Ausente'}`,
+                      `API: ${d.apiStatus === 'OK' ? '✅ Conectado' : d.apiStatus === 'INVALID_TOKEN' ? '❌ Token inválido' : d.apiStatus}`,
+                    ]
+                    if (d.apiError) lines.push(`Erro: ${d.apiError}`)
+                    showToast(lines.join(' | '), d.apiStatus === 'OK' && d.hasToken && d.hasChat ? 'success' : 'error')
+                  } catch {
+                    showToast('Erro ao buscar diagnóstico.', 'error')
+                  }
+                }}
+                className="bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 py-2.5 px-4 rounded-lg text-sm font-semibold transition-colors"
+              >
+                🔍 Diagnóstico
+              </button>
             </div>
+
+            {/* Aviso se o token pode estar corrompido */}
+            {(configs['TELEGRAM_BOT_TOKEN']?.includes('•') || configs['TELEGRAM_CHAT_ID']?.includes('•')) && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 font-medium">
+                ⚠️ <strong>Atenção:</strong> O campo do Token ou Chat ID contém um valor mascarado (●●●●). Isso provavelmente significa que o valor real foi salvo corretamente. Clique em <strong>Diagnóstico</strong> para verificar o status real da conexão, ou reinsira seus valores e salve novamente.
+              </div>
+            )}
           </div>
         </div>
 

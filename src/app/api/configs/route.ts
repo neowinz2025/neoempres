@@ -36,9 +36,19 @@ export async function PUT(request: NextRequest) {
     const updates = []
     
     for (const [key, value] of Object.entries(configData)) {
-      if (typeof value === 'string' && !value.startsWith('••••')) {
-        // Validate key format (only alphanumeric, underscores)
+      if (typeof value === 'string') {
+        // Validate key format
         if (!/^[A-Za-z0-9_]+$/.test(key)) continue
+
+        // Skip masked/placeholder values — user didn't change the field
+        // Masks are '•' (U+2022) sent back as-is from the GET response
+        const isMasked = value.includes('•') || value.startsWith('••••')
+        if (isMasked) continue
+
+        // Skip empty sensitive fields — don't overwrite with empty string
+        const isSensitiveField = ['KEY', 'TOKEN', 'SECRET', 'PASSWORD'].some(p => key.toUpperCase().includes(p))
+        if (isSensitiveField && value.trim() === '') continue
+
         updates.push(
           prisma.config.upsert({
             where: { key },
