@@ -78,16 +78,13 @@ export class ChavePixProvider implements PixProvider {
 
     const payload = buildPixPayload(chave, nome, cidade, amount)
 
-    // QR code image via free public API (no auth needed)
-    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(payload)}`
-
     const txId = `pix-${Date.now()}-${Math.random().toString(36).substring(7)}`
 
     console.log(`[ChavePix] payload gerado para chave ${chave.substring(0, 8)}... valor R$ ${amount.toFixed(2)}`)
 
     return {
       txId,
-      qrCode: qrImageUrl,
+      qrCode: null,   // gerado server-side via biblioteca qrcode no route de parcelas
       qrCodeText: payload,
       expiresAt: null,
       amount,
