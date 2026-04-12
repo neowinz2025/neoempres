@@ -10,6 +10,7 @@ interface Emprestimo {
   id: string; valor: number; valorTotal: number; tipo: string; status: string; saldoDevedor: number
   jurosDiario: number; taxaJuros: number; numParcelas: number; totalPago: number
   parcelas: Parcela[]
+  produto?: { nome: string; descricao: string | null; valorBase: number | null } | null
 }
 interface ClienteData {
   nome: string; telefone: string; saldoDevedor: number
@@ -168,6 +169,31 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
                 </div>
               </div>
 
+              {/* Produto Financiado */}
+              {emp.produto && (
+                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                  <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+                    <div className="w-9 h-9 rounded-xl bg-violet-500 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-base">📦</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-semibold text-violet-600 uppercase tracking-wider">Produto Financiado</p>
+                      <p className="font-bold text-slate-800 text-[15px] leading-tight truncate">{emp.produto.nome}</p>
+                    </div>
+                    {emp.produto.valorBase && (
+                      <span className="font-bold text-violet-700 text-sm bg-violet-50 border border-violet-200 px-3 py-1 rounded-full flex-shrink-0">
+                        {fmt(emp.produto.valorBase)}
+                      </span>
+                    )}
+                  </div>
+                  {emp.produto.descricao && (
+                    <div className="px-5 py-3">
+                      <p className="text-sm text-slate-500 whitespace-pre-wrap leading-relaxed">{emp.produto.descricao}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Parcelas Card */}
               <div className="bg-white rounded-2xl shadow-lg p-5">
                 <h2 className="text-lg font-bold text-slate-800 mb-4">Parcelas</h2>
@@ -208,19 +234,21 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
                               <span>📱</span>
                               {generatingPix === p.id ? 'Gerando...' : 'Pagar Completo'}
                             </button>
-                            {/* Pagar só Juros — opens amount modal */}
-                            <button
-                              onClick={() => {
-                                const interest = emp.valor * (emp.jurosDiario / 100)
-                                const val = emp.tipo === 'BULLET' ? interest : restante
-                                setPixAmountInput(val.toFixed(2))
-                                setPixAmountModal({ parcelaId: p.id, valorRestante: restante })
-                              }}
-                              disabled={generatingPix === p.id}
-                              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-                            >
-                              <span>📱</span> Pagar só Juros
-                            </button>
+                            {/* Pagar só Juros — oculto quando há produto financiado */}
+                            {!emp.produto && (
+                              <button
+                                onClick={() => {
+                                  const interest = emp.valor * (emp.jurosDiario / 100)
+                                  const val = emp.tipo === 'BULLET' ? interest : restante
+                                  setPixAmountInput(val.toFixed(2))
+                                  setPixAmountModal({ parcelaId: p.id, valorRestante: restante })
+                                }}
+                                disabled={generatingPix === p.id}
+                                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                              >
+                                <span>📱</span> Pagar só Juros
+                              </button>
+                            )}
                           </div>
                         </div>
                       )

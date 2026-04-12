@@ -13,6 +13,7 @@ export async function GET(
       emprestimos: {
         include: {
           parcelas: { orderBy: { numero: 'asc' } },
+          produto: true,
         },
         orderBy: { createdAt: 'desc' },
       },
@@ -55,6 +56,7 @@ export async function GET(
         numParcelas: e.parcelas.length,
         totalPago: e.parcelas.reduce((s, p) => s + (p.valorPago || 0), 0),
         parcelas: e.parcelas,
+        produto: e.produto ? { nome: e.produto.nome, descricao: e.produto.descricao, valorBase: e.produto.valorBase } : null,
       })),
       historico: historico.slice(0, 20),
     },
