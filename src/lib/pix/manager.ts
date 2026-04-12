@@ -3,6 +3,7 @@ import { FastDePixProvider } from './fastdepix'
 import { AtlasDaoProvider } from './atlasdao'
 import { BancoInterProvider } from './bancointer'
 import { BitBridgeProvider } from './bitbridge'
+import { ChavePixProvider } from './chavepix'
 import { prisma } from '@/lib/prisma'
 
 class PixManager {
@@ -11,14 +12,12 @@ class PixManager {
       const config = await prisma.config.findUnique({ where: { key: 'PIX_PROVIDER' } })
       const selected = config?.value || 'atlasdao'
 
-      if (selected === 'bitbridge') {
-        return [new BitBridgeProvider()]
-      }
+      if (selected === 'bitbridge') return [new BitBridgeProvider()]
+      if (selected === 'chavepix')  return [new ChavePixProvider()]
 
       // default: AtlasDAO
       return [new AtlasDaoProvider()]
     } catch {
-      // If DB fails, fall back to AtlasDAO
       return [new AtlasDaoProvider()]
     }
   }

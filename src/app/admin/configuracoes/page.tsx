@@ -214,7 +214,7 @@ export default function ConfiguracoesPage() {
           
           <div className="mb-6">
             <label className="block text-sm font-semibold text-slate-700 mb-3">Selecione a API PIX</label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* AtlasDAO */}
               <button
                 type="button"
@@ -251,6 +251,25 @@ export default function ConfiguracoesPage() {
                 )}
                 <h3 className="font-bold text-slate-800 text-[15px]">BitBridge</h3>
                 <p className="text-xs text-slate-600 mt-1">API DePix via BitBridge</p>
+              </button>
+
+              {/* Chave PIX */}
+              <button
+                type="button"
+                onClick={() => handleChange('PIX_PROVIDER', 'chavepix')}
+                className={`relative text-left border-2 rounded-xl p-4 transition-all cursor-pointer ${
+                  configs['PIX_PROVIDER'] === 'chavepix'
+                    ? 'border-[#10b981] bg-[#ecfdf5]'
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                }`}
+              >
+                {configs['PIX_PROVIDER'] === 'chavepix' && (
+                  <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-[#10b981] flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  </div>
+                )}
+                <h3 className="font-bold text-slate-800 text-[15px]">Chave PIX</h3>
+                <p className="text-xs text-slate-600 mt-1">QR code pela sua chave PIX</p>
               </button>
             </div>
           </div>
@@ -293,6 +312,56 @@ export default function ConfiguracoesPage() {
                   <li>Limite por operação: R$ 500,00 &mdash; Volume diário: R$ 5.000,00.</li>
                   <li>Mínimo aceito: R$ 20,00 (2000 centavos).</li>
                 </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Chave PIX fields */}
+          {configs['PIX_PROVIDER'] === 'chavepix' && (
+            <div className="bg-[#ecfdf5] border border-[#a7f3d0] rounded-xl p-5 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Chave PIX <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={configs['CHAVEPIX_CHAVE'] || ''}
+                    onChange={(e) => handleChange('CHAVEPIX_CHAVE', e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-mono focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none transition-all"
+                    placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
+                  />
+                  <p className="text-xs text-slate-500 mt-1.5 ml-1">Informe qualquer tipo de chave PIX cadastrada no seu banco.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Nome do Favorecido <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    maxLength={25}
+                    value={configs['CHAVEPIX_NOME'] || ''}
+                    onChange={(e) => handleChange('CHAVEPIX_NOME', e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none transition-all"
+                    placeholder="Ex: JOAO SILVA"
+                  />
+                  <p className="text-xs text-slate-500 mt-1.5 ml-1">Máx. 25 caracteres, sem acentos.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Cidade <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    maxLength={15}
+                    value={configs['CHAVEPIX_CIDADE'] || ''}
+                    onChange={(e) => handleChange('CHAVEPIX_CIDADE', e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none transition-all"
+                    placeholder="Ex: SAO PAULO"
+                  />
+                  <p className="text-xs text-slate-500 mt-1.5 ml-1">Máx. 15 caracteres, sem acentos.</p>
+                </div>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <h4 className="font-bold text-amber-800 text-sm mb-1.5">⚠️ Confirmação Manual</h4>
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  Com Chave PIX, o QR code é gerado automaticamente mas <strong>a baixa da parcela não é automática</strong>.
+                  Após confirmar o pagamento no seu banco, registre manualmente no painel em <strong>Empréstimos → Parcela → Receber</strong>.
+                </p>
               </div>
             </div>
           )}
