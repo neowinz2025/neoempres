@@ -155,7 +155,7 @@ export default function ClientePortalPage({ params }: { params: Promise<{ token:
                 {/* Detail Row */}
                 <div className="grid grid-cols-3 gap-2 px-5 pb-5 text-xs text-slate-600">
                   <div>
-                    <p className="text-slate-400 font-medium">Total com Juros</p>
+                    <p className="text-slate-400 font-medium">{emp.produto ? 'Total' : 'Total com Juros'}</p>
                     <p className="font-semibold text-slate-700">{fmt(totalComJuros)}</p>
                   </div>
                   <div>
