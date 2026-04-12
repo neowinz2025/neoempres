@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
     const body = await request.text()
     const fdSignature = request.headers.get('X-Webhook-Signature')
     const atlasSignature = request.headers.get('X-Atlas-Signature')
+    const bitbridgeSignature = request.headers.get('X-BitBridge-Signature')
 
     let isValid = false
 
@@ -19,6 +20,17 @@ export async function POST(request: NextRequest) {
         const expected = 'sha256=' + CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)
         const plain = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)
         if (atlasSignature === expected || atlasSignature === plain) isValid = true
+      }
+    } else if (bitbridgeSignature) {
+      const config = await prisma.config.findUnique({ where: { key: 'BITBRIDGE_WEBHOOK_SECRET' } })
+      const secret = config?.value || process.env.BITBRIDGE_WEBHOOK_SECRET || ''
+      if (secret) {
+        const expected = 'sha256=' + CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)
+        const plain = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex)
+        if (bitbridgeSignature === expected || bitbridgeSignature === plain) isValid = true
+      } else {
+        // BitBridge sem secret configurado — aceitar (validar pelo txid no banco)
+        isValid = true
       }
     } else if (fdSignature) {
       const config = await prisma.config.findUnique({ where: { key: 'FASTDEPIX_WEBHOOK_SECRET' } })

@@ -213,43 +213,89 @@ export default function ConfiguracoesPage() {
           </div>
           
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Selecione a API PIX</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-3">Selecione a API PIX</label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="border-2 border-[#10b981] bg-[#ecfdf5] rounded-xl p-4 cursor-pointer relative">
-                <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-[#10b981] flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-                </div>
+              {/* AtlasDAO */}
+              <button
+                type="button"
+                onClick={() => handleChange('PIX_PROVIDER', 'atlasdao')}
+                className={`relative text-left border-2 rounded-xl p-4 transition-all cursor-pointer ${
+                  (configs['PIX_PROVIDER'] || 'atlasdao') === 'atlasdao'
+                    ? 'border-[#10b981] bg-[#ecfdf5]'
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                }`}
+              >
+                {(configs['PIX_PROVIDER'] || 'atlasdao') === 'atlasdao' && (
+                  <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-[#10b981] flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  </div>
+                )}
                 <h3 className="font-bold text-slate-800 text-[15px]">DEPIX (AtlasDAO)</h3>
-                <p className="text-xs text-slate-600 mt-1 cursor-default">API via AtlasDAO Web3</p>
-              </div>
-              <div className="border-2 border-slate-200 bg-white hover:bg-slate-50 transition-colors rounded-xl p-4 cursor-not-allowed opacity-60">
-                <div className="absolute top-3 right-3 w-4 h-4 rounded-full border-2 border-slate-300"></div>
-                <h3 className="font-bold text-slate-800 text-[15px]">Banco Inter</h3>
-                <p className="text-xs text-slate-500 mt-1 cursor-not-allowed">Em breve</p>
-              </div>
+                <p className="text-xs text-slate-600 mt-1">API via AtlasDAO Web3</p>
+              </button>
+
+              {/* BitBridge */}
+              <button
+                type="button"
+                onClick={() => handleChange('PIX_PROVIDER', 'bitbridge')}
+                className={`relative text-left border-2 rounded-xl p-4 transition-all cursor-pointer ${
+                  configs['PIX_PROVIDER'] === 'bitbridge'
+                    ? 'border-[#10b981] bg-[#ecfdf5]'
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
+                }`}
+              >
+                {configs['PIX_PROVIDER'] === 'bitbridge' && (
+                  <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-[#10b981] flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  </div>
+                )}
+                <h3 className="font-bold text-slate-800 text-[15px]">BitBridge</h3>
+                <p className="text-xs text-slate-600 mt-1">API DePix via BitBridge</p>
+              </button>
             </div>
           </div>
 
-          <div className="bg-[#ecfdf5] border border-[#a7f3d0] rounded-xl p-5 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">AtlasDAO API Key <span className="text-red-500">*</span></label>
-              <input type="password" value={configs['ATLASDAO_API_KEY'] || ''} onChange={(e) => handleChange('ATLASDAO_API_KEY', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none transition-all placeholder:text-slate-400" placeholder="••••••••••••••••••••••••" />
+          {/* AtlasDAO fields */}
+          {(configs['PIX_PROVIDER'] || 'atlasdao') === 'atlasdao' && (
+            <div className="bg-[#ecfdf5] border border-[#a7f3d0] rounded-xl p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">AtlasDAO API Key <span className="text-red-500">*</span></label>
+                <input type="password" value={configs['ATLASDAO_API_KEY'] || ''} onChange={(e) => handleChange('ATLASDAO_API_KEY', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none transition-all placeholder:text-slate-400" placeholder="••••••••••••••••••••••••" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">DEPIX Wallet Address <span className="text-red-500">*</span></label>
+                <input type="text" value={configs['ATLASDAO_WALLET_ADDRESS'] || ''} onChange={(e) => handleChange('ATLASDAO_WALLET_ADDRESS', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-700 font-mono focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none transition-all placeholder:text-slate-400" placeholder="0x..." />
+                <p className="text-xs text-slate-500 mt-1.5 ml-1">Endereço da sua carteira para receber os pagamentos</p>
+              </div>
+              <div className="mt-5 bg-[#eff6ff] border border-[#bfdbfe] rounded-lg p-4">
+                <h4 className="font-bold text-[#1e40af] text-sm mb-2">Informações Importantes</h4>
+                <ul className="list-disc list-inside text-xs text-[#1e3a8a] space-y-1">
+                  <li>As credenciais são armazenadas de forma segura.</li>
+                  <li>A API Key e o endereço são obrigatórios para gerar cobranças PIX.</li>
+                  <li>Todos os pagamentos serão recebidos no endereço configurado.</li>
+                </ul>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">DEPIX Wallet Address <span className="text-red-500">*</span></label>
-              <input type="text" value={configs['ATLASDAO_WALLET_ADDRESS'] || ''} onChange={(e) => handleChange('ATLASDAO_WALLET_ADDRESS', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-700 font-mono focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none transition-all placeholder:text-slate-400" placeholder="0x..." />
-              <p className="text-xs text-slate-500 mt-1.5 ml-1">Endereço da sua carteira para receber os pagamentos</p>
+          )}
+
+          {/* BitBridge fields */}
+          {configs['PIX_PROVIDER'] === 'bitbridge' && (
+            <div className="bg-[#ecfdf5] border border-[#a7f3d0] rounded-xl p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">BitBridge API Key <span className="text-red-500">*</span></label>
+                <input type="password" value={configs['BITBRIDGE_API_KEY'] || ''} onChange={(e) => handleChange('BITBRIDGE_API_KEY', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none transition-all placeholder:text-slate-400" placeholder="bpk_••••••••••••••••••••••" />
+                <p className="text-xs text-slate-500 mt-1.5 ml-1">Obtenha sua key no painel BitBridge (formato <code className="bg-slate-100 px-1 rounded">bpk_...</code>)</p>
+              </div>
+              <div className="mt-2 bg-[#eff6ff] border border-[#bfdbfe] rounded-lg p-4">
+                <h4 className="font-bold text-[#1e40af] text-sm mb-2">Sobre o BitBridge</h4>
+                <ul className="list-disc list-inside text-xs text-[#1e3a8a] space-y-1">
+                  <li>Endpoint: <code className="bg-white px-1 rounded">depix-create-pix</code> via Supabase Functions.</li>
+                  <li>Limite por operação: R$ 500,00 &mdash; Volume diário: R$ 5.000,00.</li>
+                  <li>Mínimo aceito: R$ 20,00 (2000 centavos).</li>
+                </ul>
+              </div>
             </div>
-            
-            <div className="mt-5 bg-[#eff6ff] border border-[#bfdbfe] rounded-lg p-4">
-              <h4 className="font-bold text-[#1e40af] text-sm mb-2">Informações Importantes</h4>
-              <ul className="list-disc list-inside text-xs text-[#1e3a8a] space-y-1">
-                <li>As credenciais são armazenadas de forma segura.</li>
-                <li>A API Key e o endereço são obrigatórios para gerar cobranças PIX.</li>
-                <li>Todos os pagamentos serão recebidos no endereço configurado.</li>
-              </ul>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Notificações via Z-API */}
