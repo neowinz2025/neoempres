@@ -5,6 +5,7 @@ import { z } from 'zod'
 export const CreateClienteSchema = z.object({
   nome: z.string().min(2).max(200),
   telefone: z.string().min(8).max(20),
+  notificarWpp: z.boolean().optional(),
 })
 
 // ── Empréstimos ───────────────────────────────────────────────────────────────

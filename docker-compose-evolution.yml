@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: evolution_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: evol_db_pass_2026
+      POSTGRES_DB: evolution
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: evolution_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+
+  evolution:
+    image: atendai/evolution-api:latest
+    container_name: evolution_api
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      SERVER_TYPE: http
+      SERVER_PORT: "8080"
+      AUTHENTICATION_API_KEY: evol_neoempres_2026
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: "postgresql://evolution:evol_db_pass_2026@postgres:5432/evolution?schema=public"
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: "redis://redis:6379"
+      STORE_MESSAGES: "true"
+      STORE_MESSAGE_UP: "true"
+      STORE_CONTACTS: "true"
+      STORE_CHATS: "true"
+      QRCODE_LIMIT: "30"
+      WEBHOOK_GLOBAL_ENABLED: "false"
+    volumes:
+      - evolution_data:/evolution/instances
+
+volumes:
+  postgres_data:
+  redis_data:
+  evolution_data:

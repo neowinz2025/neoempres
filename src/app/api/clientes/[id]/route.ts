@@ -43,7 +43,7 @@ export async function PUT(
 
   const { id } = await params
   const body = await request.json()
-  const { nome, telefone, score } = body
+  const { nome, telefone, score, notificarWpp } = body
 
   try {
     const cliente = await prisma.cliente.update({
@@ -52,6 +52,7 @@ export async function PUT(
         ...(nome && { nome }),
         ...(telefone && { telefone }),
         ...(score && { score }),
+        ...(notificarWpp !== undefined && { notificarWpp: Boolean(notificarWpp) }),
       },
     })
 

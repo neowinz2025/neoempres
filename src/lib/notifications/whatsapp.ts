@@ -2,27 +2,31 @@ export async function sendWhatsApp(
   telefone: string,
   mensagem: string
 ): Promise<boolean> {
-  const instanceId = process.env.ZAPI_INSTANCE_ID
-  const token = process.env.ZAPI_TOKEN
+  const isEnabled = process.env.EVOLUTION_ENABLED === 'true'
+  const baseUrl = process.env.EVOLUTION_URL
+  const apiKey = process.env.EVOLUTION_API_KEY
+  const instanceName = process.env.EVOLUTION_INSTANCE || 'principal'
 
-  if (!instanceId || !token) {
-    console.warn('[WhatsApp] Z-API not configured')
+  if (!isEnabled || !baseUrl || !apiKey || !instanceName) {
+    console.warn('[WhatsApp] Evolution API not configured or disabled')
     return false
   }
 
   try {
     const phone = telefone.replace(/\D/g, '')
-    const res = await fetch(
-      `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: `55${phone}`,
-          message: mensagem,
-        }),
-      }
-    )
+    const endpoint = `${baseUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`
+    
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': apiKey
+      },
+      body: JSON.stringify({
+        number: `55${phone}`,
+        text: mensagem,
+      }),
+    })
 
     if (!res.ok) {
       console.error('[WhatsApp] Error:', await res.text())

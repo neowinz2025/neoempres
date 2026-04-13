@@ -14,6 +14,7 @@ interface Emprestimo {
 }
 interface Cliente {
   id: string; nome: string; telefone: string; score: string; token: string; createdAt: string
+  notificarWpp: boolean;
   emprestimos: Emprestimo[]
 }
 
@@ -90,6 +91,27 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
           </div>
           <div className="flex flex-wrap gap-2">
             <span className={`badge ${statusBadge[cliente.score] || 'badge-warning'}`}>Score {cliente.score}</span>
+            <button
+              onClick={async () => {
+                const newValue = !cliente.notificarWpp;
+                setCliente({ ...cliente, notificarWpp: newValue });
+                await fetch(`/api/clientes/${id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ notificarWpp: newValue })
+                });
+              }}
+              className={`btn-sm flex items-center gap-2`}
+              style={{
+                background: cliente.notificarWpp ? '#ecfdf5' : '#f1f5f9',
+                color: cliente.notificarWpp ? '#10b981' : '#64748b',
+                border: `1px solid ${cliente.notificarWpp ? '#a7f3d0' : '#cbd5e1'}`,
+                borderRadius: '0.75rem', padding: '0.4rem 0.8rem', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer'
+              }}
+            >
+              <div className={`w-3 h-3 rounded-full ${cliente.notificarWpp ? 'bg-[#10b981]' : 'bg-[#64748b]'}`}></div>
+              WhatsApp: {cliente.notificarWpp ? 'ON' : 'OFF'}
+            </button>
             <button
               onClick={() => navigator.clipboard.writeText(`${window.location.origin}/cliente/${cliente.token}`)}
               className="btn-secondary btn-sm"

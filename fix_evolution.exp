@@ -1,0 +1,83 @@
+#!/usr/bin/expect -f
+set timeout 120
+spawn ssh -o StrictHostKeyChecking=no root@137.184.86.179
+expect "password:"
+send "hUg@9615@h\r"
+expect "# "
+
+# Para container atual
+send "cd /opt/evolution && docker compose down 2>&1\r"
+expect "# "
+
+# Novo docker-compose com PostgreSQL
+send {cat > /opt/evolution/docker-compose.yml << 'YAML'
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: evolution_postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=evolution
+      - POSTGRES_PASSWORD=evol_db_pass_2026
+      - POSTGRES_DB=evolution
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  evolution:
+    image: atendai/evolution-api:latest
+    container_name: evolution_api
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - SERVER_TYPE=http
+      - SERVER_PORT=8080
+      - AUTHENTICATION_API_KEY=evol_neoempres_2026
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://evolution:evol_db_pass_2026@postgres:5432/evolution?schema=public
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - STORE_MESSAGES=true
+      - STORE_MESSAGE_UP=true
+      - STORE_CONTACTS=true
+      - STORE_CHATS=true
+      - QRCODE_LIMIT=30
+      - WEBHOOK_GLOBAL_ENABLED=false
+    volumes:
+      - evolution_data:/evolution/instances
+
+volumes:
+  postgres_data:
+  evolution_data:
+YAML
+}
+send "\r"
+expect "# "
+
+send "docker compose up -d 2>&1 | tail -20\r"
+expect -timeout 120 "# "
+
+send "echo 'Aguardando 30s...' && sleep 30 && curl -s http://localhost:8080/ | head -c 300\r"
+expect -timeout 90 "# "
+
+send "docker ps\r"
+expect "# "
+
+send "docker logs evolution_api --tail 20 2>&1\r"
+expect "# "
+
+send "exit\r"
+expect eof

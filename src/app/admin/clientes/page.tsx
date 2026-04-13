@@ -31,6 +31,7 @@ export default function ClientesPage() {
   const [showModal, setShowModal] = useState(false)
   const [nome, setNome] = useState('')
   const [telefone, setTelefone] = useState('')
+  const [notificarWpp, setNotificarWpp] = useState(true)
   const [saving, setSaving] = useState(false)
 
   const fetchClientes = useCallback(async () => {
@@ -52,11 +53,12 @@ export default function ClientesPage() {
     await fetch('/api/clientes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nome, telefone }),
+      body: JSON.stringify({ nome, telefone, notificarWpp }),
     })
     setShowModal(false)
     setNome('')
     setTelefone('')
+    setNotificarWpp(true)
     setSaving(false)
     fetchClientes()
   }
@@ -189,6 +191,19 @@ export default function ClientesPage() {
                   placeholder="(11) 99999-9999"
                   required
                 />
+              </div>
+              <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                <div>
+                  <label className="text-sm font-medium text-slate-700 block">Receber Cobrança via WhatsApp</label>
+                  <p className="text-xs text-slate-500">Enviar mensagens via Evolution API</p>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setNotificarWpp(!notificarWpp)} 
+                  className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer border-2 ${notificarWpp ? 'bg-[#0284c7] border-[#0284c7]' : 'bg-slate-200 border-slate-200'}`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${notificarWpp ? 'right-0.5' : 'left-0.5'}`}></div>
+                </button>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1 justify-center">

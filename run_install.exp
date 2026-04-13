@@ -1,0 +1,32 @@
+#!/usr/bin/expect -f
+set timeout 900
+set host "137.184.86.179"
+set user "root"
+set pass "hUg@9615@h"
+set script "/Users/dfmilhas/emprestimos/neoempres/install_evolution_remote.sh"
+
+# Upload script via SCP
+spawn scp -o StrictHostKeyChecking=no $script $user@$host:/root/install_evolution.sh
+expect "password:"
+send "$pass\r"
+expect eof
+
+# Run script via SSH
+spawn ssh -o StrictHostKeyChecking=no $user@$host "bash /root/install_evolution.sh"
+expect "password:"
+send "$pass\r"
+
+# Stream all output until completion
+expect {
+    "INSTALACAO CONCLUIDA" {
+        puts "\n\nINSTALACAO FINALIZADA!"
+        expect eof
+    }
+    timeout {
+        puts "\nERRO: timeout na instalacao"
+        exit 1
+    }
+    eof {
+        puts "\nConexao encerrada"
+    }
+}

@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
         })
       }
 
-      if (mensagem && cliente.telefone) {
+      if (mensagem && cliente.telefone && cliente.notificarWpp) {
         try {
           await sendWhatsApp(cliente.telefone, mensagem)
           await prisma.notificacao.create({

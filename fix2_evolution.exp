@@ -1,0 +1,31 @@
+#!/usr/bin/expect -f
+set timeout 120
+set pass "hUg@9615@h"
+set host "root@137.184.86.179"
+
+# SCP the clean compose file
+spawn scp -o StrictHostKeyChecking=no /Users/dfmilhas/emprestimos/neoempres/docker-compose-evolution.yml $host:/opt/evolution/docker-compose.yml
+expect "password:"
+send "$pass\r"
+expect eof
+
+# SSH and restart
+spawn ssh -o StrictHostKeyChecking=no $host
+expect "password:"
+send "$pass\r"
+expect "# "
+
+send "cd /opt/evolution && docker compose down && docker compose up -d && echo DONE_START\r"
+expect -timeout 60 "DONE_START"
+expect "# "
+
+send "sleep 30 && curl -s http://localhost:8080/ | head -c 400 && echo DONE_CURL\r"
+expect -timeout 60 "DONE_CURL"
+expect "# "
+
+send "docker ps && docker logs evolution_api --tail 15 2>&1 && echo DONE_LOGS\r"
+expect -timeout 30 "DONE_LOGS"
+expect "# "
+
+send "exit\r"
+expect eof

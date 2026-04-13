@@ -367,7 +367,7 @@ export default function ConfiguracoesPage() {
           )}
         </div>
 
-        {/* Notificações via Z-API */}
+        {/* Notificações via Evolution API */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
@@ -375,35 +375,39 @@ export default function ConfiguracoesPage() {
                 <span className="text-xl">💬</span>
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-800 tracking-tight">Cobrança via WhatsApp (Z-API)</h2>
+                <h2 className="text-lg font-bold text-slate-800 tracking-tight">Cobrança via WhatsApp (Evolution API)</h2>
                 <p className="text-sm text-slate-500">Envie cobranças automaticamente pelo WhatsApp</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {configs['ZAPI_ENABLED'] === 'true' ? (
-                <button type="button" onClick={() => handleChange('ZAPI_ENABLED', 'false')} className="w-11 h-6 bg-[#0284c7] rounded-full relative transition-colors cursor-pointer border-2 border-[#0284c7]">
+              {configs['EVOLUTION_ENABLED'] === 'true' ? (
+                <button type="button" onClick={() => handleChange('EVOLUTION_ENABLED', 'false')} className="w-11 h-6 bg-[#0284c7] rounded-full relative transition-colors cursor-pointer border-2 border-[#0284c7]">
                   <div className="absolute right-0.5 top-0.5 w-4 h-4 bg-white rounded-full"></div>
                 </button>
               ) : (
-                <button type="button" onClick={() => handleChange('ZAPI_ENABLED', 'true')} className="w-11 h-6 bg-slate-200 rounded-full relative transition-colors cursor-pointer border-2 border-slate-200">
+                <button type="button" onClick={() => handleChange('EVOLUTION_ENABLED', 'true')} className="w-11 h-6 bg-slate-200 rounded-full relative transition-colors cursor-pointer border-2 border-slate-200">
                   <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full"></div>
                 </button>
               )}
-              <span className={`text-sm font-semibold ${configs['ZAPI_ENABLED'] === 'true' ? 'text-[#0284c7]' : 'text-slate-500'}`}>
-                {configs['ZAPI_ENABLED'] === 'true' ? 'Ativado' : 'Desativado'}
+              <span className={`text-sm font-semibold ${configs['EVOLUTION_ENABLED'] === 'true' ? 'text-[#0284c7]' : 'text-slate-500'}`}>
+                {configs['EVOLUTION_ENABLED'] === 'true' ? 'Ativado' : 'Desativado'}
               </span>
             </div>
           </div>
 
-          <div className={`mt-6 space-y-4 ${configs['ZAPI_ENABLED'] !== 'true' && 'opacity-50 pointer-events-none'}`}>
+          <div className={`mt-6 space-y-4 ${configs['EVOLUTION_ENABLED'] !== 'true' && 'opacity-50 pointer-events-none'}`}>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Evolution API URL</label>
+              <input type="url" value={configs['EVOLUTION_URL'] || ''} onChange={(e) => handleChange('EVOLUTION_URL', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Ex: http://137.184.86.179" />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Instance ID</label>
-                <input type="text" value={configs['ZAPI_INSTANCE_ID'] || ''} onChange={(e) => handleChange('ZAPI_INSTANCE_ID', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Ex: 3B4E..." />
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Global API Key</label>
+                <input type="password" value={configs['EVOLUTION_API_KEY'] || ''} onChange={(e) => handleChange('EVOLUTION_API_KEY', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Z-API Token</label>
-                <input type="password" value={configs['ZAPI_TOKEN'] || ''} onChange={(e) => handleChange('ZAPI_TOKEN', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Nome da Instância</label>
+                <input type="text" value={configs['EVOLUTION_INSTANCE'] || ''} onChange={(e) => handleChange('EVOLUTION_INSTANCE', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Ex: principal" />
               </div>
             </div>
           </div>

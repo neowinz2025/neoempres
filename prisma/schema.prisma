@@ -88,14 +88,15 @@ model WebAuthnCredential {
 }
 
 model Cliente {
-  id          String       @id @default(cuid())
-  nome        String
-  telefone    String
-  score       Score        @default(C)
-  token       String       @unique @default(cuid())
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  emprestimos Emprestimo[]
+  id           String       @id @default(cuid())
+  nome         String
+  telefone     String
+  score        Score        @default(C)
+  token        String       @unique @default(cuid())
+  notificarWpp Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  emprestimos  Emprestimo[]
 
   @@map("clientes")
 }

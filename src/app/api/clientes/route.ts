@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { nome, telefone } = body
+    const { nome, telefone, notificarWpp = true } = body
 
     if (!nome || !telefone) {
       return NextResponse.json(
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cliente = await prisma.cliente.create({
-      data: { nome: sanitizedNome, telefone: sanitizedTelefone },
+      data: { nome: sanitizedNome, telefone: sanitizedTelefone, notificarWpp: Boolean(notificarWpp) },
     })
 
     await prisma.log.create({
