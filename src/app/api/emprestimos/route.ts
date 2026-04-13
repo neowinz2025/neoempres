@@ -128,6 +128,14 @@ export async function POST(request: NextRequest) {
         },
       })
 
+      // Marcar produto como vendido (indisponível para novos empréstimos)
+      if (produtoId) {
+        await tx.produto.update({
+          where: { id: produtoId },
+          data: { ativo: false },
+        })
+      }
+
       await tx.log.create({
         data: {
           userId: session.userId,
@@ -135,7 +143,7 @@ export async function POST(request: NextRequest) {
           nivel: 'INFO',
           entidade: 'EMPRESTIMO',
           entidadeId: emp.id,
-          detalhes: `Empréstimo de R$ ${valor} criado para ${cliente.nome}`,
+          detalhes: `Empréstimo de R$ ${valor} criado para ${cliente.nome}${produtoId ? ` com produto vinculado` : ''}`,
           ip: request.headers.get('x-forwarded-for') ?? undefined,
         },
       })
