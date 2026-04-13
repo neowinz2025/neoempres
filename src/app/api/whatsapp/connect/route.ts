@@ -29,7 +29,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Configurações do Evolution API não preenchidas no painel.' }, { status: 400 })
     }
 
-    const cleanBaseUrl = baseUrl.replace(/\/$/, '')
+    let cleanBaseUrl = baseUrl.replace(/\/$/, '')
+    if (!cleanBaseUrl.startsWith('http://') && !cleanBaseUrl.startsWith('https://')) {
+      cleanBaseUrl = `http://${cleanBaseUrl}`
+    }
 
     // 1. Opcional: verificar estado para criar a instância se não existir
     try {
@@ -50,25 +53,28 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. Tentar buscar conexão via Connect (Isso retorna o Base64 na v2)
-    const connectRes = await fetch(`${cleanBaseUrl}/instance/connect/${instanceName}`, {
-      headers: { apikey: apiKey },
-    })
-
-    if (!connectRes.ok) {
-      throw new Error('Falha ao comunicar com Evolution API para conectar')
-    }
-
-    const data = await connectRes.json()
-    
-    // Na v1/v2, o base64 geralmente retorna em data.base64 ou data.qrcode.base64
     let qrcodeBase64 = null
-    if (data.base64) {
-      qrcodeBase64 = data.base64
-    } else if (data.qrcode && data.qrcode.base64) {
-      qrcodeBase64 = data.qrcode.base64
-    } else if (data.qrcode) {
-      // Às vezes retorna o Base64 puro no qrcode
-      qrcodeBase64 = data.qrcode
+    let stateData: any = { instance: { state: 'connecting' } }
+
+    try {
+      const connectRes = await fetch(`${cleanBaseUrl}/instance/connect/${instanceName}`, {
+        headers: { apikey: apiKey },
+      })
+
+      if (connectRes.ok) {
+        const data = await connectRes.json()
+        if (data.base64) {
+          qrcodeBase64 = data.base64
+        } else if (data.qrcode && data.qrcode.base64) {
+          qrcodeBase64 = data.qrcode.base64
+        } else if (typeof data.qrcode === 'string') {
+          qrcodeBase64 = data.qrcode
+        }
+      } else {
+        console.warn('[WhatsApp] /connect não retornou OK. Geralmente ocorre se a instância já estiver lida.')
+      }
+    } catch (e: any) {
+      console.error('[WhatsApp] Falha ao tentar conectar:', e.message)
     }
 
     // Checa o state da conexão
@@ -76,14 +82,13 @@ export async function GET(request: NextRequest) {
       headers: { apikey: apiKey },
     })
     
-    let stateData = { instance: { state: 'connecting' } }
     if (stateRes.ok) {
       stateData = await stateRes.json()
     }
 
     return NextResponse.json({
       qrcode: qrcodeBase64,
-      state: stateData.instance?.state || 'connecting'
+      state: stateData.instance?.state || stateData.state || 'connecting'
     })
 
   } catch (error) {
