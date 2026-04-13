@@ -1,14 +1,28 @@
+import { prisma } from '../prisma'
+
 export async function sendWhatsApp(
   telefone: string,
   mensagem: string
 ): Promise<boolean> {
-  const isEnabled = process.env.EVOLUTION_ENABLED === 'true'
-  const baseUrl = process.env.EVOLUTION_URL
-  const apiKey = process.env.EVOLUTION_API_KEY
-  const instanceName = process.env.EVOLUTION_INSTANCE || 'principal'
+  const configsDB = await prisma.config.findMany({
+    where: { 
+      key: { in: ['EVOLUTION_ENABLED', 'EVOLUTION_URL', 'EVOLUTION_API_KEY'] }
+    }
+  })
 
-  if (!isEnabled || !baseUrl || !apiKey || !instanceName) {
-    console.warn('[WhatsApp] Evolution API not configured or disabled')
+  let evolutionEnabled = false
+  let baseUrl = ''
+  let apiKey = ''
+  const instanceName = 'neoempres'
+
+  for (const c of configsDB) {
+    if (c.key === 'EVOLUTION_ENABLED') evolutionEnabled = c.value === 'true'
+    if (c.key === 'EVOLUTION_URL') baseUrl = c.value || ''
+    if (c.key === 'EVOLUTION_API_KEY') apiKey = c.value || ''
+  }
+
+  if (!evolutionEnabled || !baseUrl || !apiKey) {
+    console.warn('[WhatsApp] Evolution API not configured or disabled in DB')
     return false
   }
 

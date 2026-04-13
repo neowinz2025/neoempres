@@ -427,10 +427,6 @@ export default function ConfiguracoesPage() {
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Global API Key</label>
                 <input type="password" value={configs['EVOLUTION_API_KEY'] || ''} onChange={(e) => handleChange('EVOLUTION_API_KEY', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Nome da Instância</label>
-                <input type="text" value={configs['EVOLUTION_INSTANCE'] || ''} onChange={(e) => handleChange('EVOLUTION_INSTANCE', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Ex: principal" />
-              </div>
             </div>
             
             {configs['EVOLUTION_ENABLED'] === 'true' && (

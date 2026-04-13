@@ -17,15 +17,14 @@ export async function GET(request: NextRequest) {
     
     let baseUrl = ''
     let apiKey = ''
-    let instanceName = ''
+    let instanceName = 'neoempres'
 
     dbConfigs.forEach((c) => {
       if (c.key === 'EVOLUTION_URL') baseUrl = c.value || ''
       if (c.key === 'EVOLUTION_API_KEY') apiKey = c.value || ''
-      if (c.key === 'EVOLUTION_INSTANCE') instanceName = c.value || ''
     })
 
-    if (!baseUrl || !apiKey || !instanceName) {
+    if (!baseUrl || !apiKey) {
       return NextResponse.json({ error: 'Configurações do Evolution API não preenchidas no painel.' }, { status: 400 })
     }
 
