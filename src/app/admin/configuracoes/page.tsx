@@ -21,6 +21,28 @@ export default function ConfiguracoesPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
+  const [waLoading, setWaLoading] = useState(false)
+  const [waState, setWaState] = useState('')
+  const [waQrCode, setWaQrCode] = useState('')
+
+  const checkWhatsApp = async () => {
+    setWaLoading(true)
+    setWaQrCode('')
+    try {
+      const res = await fetch('/api/whatsapp/connect')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao conectar')
+      setWaState(data.state || 'Nenhum')
+      if (data.qrcode) {
+        setWaQrCode(data.qrcode)
+      }
+    } catch (e: any) {
+      showToast(e.message, 'error')
+    } finally {
+      setWaLoading(false)
+    }
+  }
+
   // Read theme from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('theme') as 'light' | 'dark' | null
@@ -410,6 +432,33 @@ export default function ConfiguracoesPage() {
                 <input type="text" value={configs['EVOLUTION_INSTANCE'] || ''} onChange={(e) => handleChange('EVOLUTION_INSTANCE', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Ex: principal" />
               </div>
             </div>
+            
+            {configs['EVOLUTION_ENABLED'] === 'true' && (
+              <div className="mt-6 p-4 border border-slate-200 rounded-xl bg-slate-50 flex flex-col items-center justify-center gap-4">
+                <div className="text-center">
+                  <h3 className="font-semibold text-slate-800">Conexão do WhatsApp</h3>
+                  <p className="text-xs text-slate-500">
+                    O WhatsApp precisa estar conectado para disparar mensagens.<br />
+                    Status atual: <span className="font-bold">{waState || 'Desconhecido'}</span>
+                  </p>
+                </div>
+                
+                {waQrCode && (
+                  <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-200">
+                    <img src={waQrCode} alt="QR Code WhatsApp" className="w-48 h-48" />
+                  </div>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={checkWhatsApp}
+                  disabled={waLoading}
+                  className="btn-secondary text-sm"
+                >
+                  {waLoading ? 'Verificando...' : 'Verificar Status / Gerar QR Code'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
