@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth'
 import { UpdateParcelaSchema } from '@/lib/validators'
 import { processarRenovacaoBullet } from '@/lib/bulletRenewal'
 import { sendTelegram } from '@/lib/notifications/telegram'
+import { sendWhatsApp } from '@/lib/notifications/whatsapp'
 
 export async function PUT(
   request: NextRequest,
@@ -31,7 +32,11 @@ export async function PUT(
   try {
     const parcela = await prisma.parcela.findUnique({
       where: { id },
-      include: { emprestimo: true },
+      include: { 
+        emprestimo: {
+          include: { cliente: true }
+        }
+      },
     })
 
     if (!parcela) {
@@ -134,7 +139,8 @@ export async function PUT(
       })
 
       // Send Telegram notification (outside transaction — non-critical)
-      const clienteNome = (parcela as any).emprestimo?.cliente?.nome ?? '—'
+      const cliente = (parcela as any).emprestimo?.cliente
+      const clienteNome = cliente?.nome ?? '—'
       const emoji = finalStatus === 'PAGO' ? '✅' : '⏳'
       const statusLabel = finalStatus === 'PAGO' ? 'Pago integralmente' : 'Pagamento parcial'
       const restante = finalStatus === 'PARCIAL'
@@ -152,6 +158,22 @@ export async function PUT(
         restante + `\n` +
         `💳 <b>Forma:</b> ${formaPagamento || 'Painel Administrativo'}`
       ).catch(console.error)
+
+      // ─────────────────────────────────────────────────────────────
+      // Z-API / WhatsApp: Envio automático de Recibo de Pagamento!
+      // ─────────────────────────────────────────────────────────────
+      if (cliente && cliente.telefone && cliente.notificarWpp) {
+        let msgWpp = ''
+        if (finalStatus === 'PAGO') {
+          msgWpp = `✅ *PAGAMENTO CONFIRMADO*\n\nOlá *${cliente.nome}*,\nRecebemos o pagamento da *Parcela #${parcela.numero}* no valor de R$ ${currentTotalPaid.toFixed(2).replace('.', ',')}.\n\nAgradecemos a sua preferência e pontualidade! 🤝`
+        } else if (finalStatus === 'PARCIAL') {
+          msgWpp = `⏳ *PAGAMENTO PARCIAL RECEBIDO*\n\nOlá *${cliente.nome}*,\nRecebemos uma parte do pagamento referente à Parcela #${parcela.numero} (R$ ${currentTotalPaid.toFixed(2).replace('.', ',')}).\n\n💳 *Saldo restante desta parcela:* R$ ${(parcela.valor - currentTotalPaid).toFixed(2).replace('.', ',')}\n\nAgradecemos o envio!`
+        }
+        
+        if (msgWpp) {
+           sendWhatsApp(cliente.telefone, msgWpp).catch(err => console.error('[Z-API RECIBO]', err))
+        }
+      }
 
       return NextResponse.json({ data: updated })
     }
