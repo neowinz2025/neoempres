@@ -23,16 +23,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Z-API OnReceive Event (Mensagem Recebida)
-    if (body.phone && body.message) {
-      const messageData = body.message
+    if (body.phone || body.message || body.text) {
       
       // Ignora eventos que nós mesmos enviamos (fromMe)
-      if (!messageData.key?.fromMe) {
-        const telefoneRemetente = body.phone
+      const fromMe = body.fromMe || body.key?.fromMe || body.message?.key?.fromMe
+      if (!fromMe) {
+        const telefoneRemetente = body.phone || body.key?.remoteJid?.split('@')[0]
         
-        // Extrai o texto da mensagem (pode vir em conversation ou text)
-        const textoMsg = (messageData.conversation || messageData.text || messageData.extendedTextMessage?.text || '').toLowerCase()
+        // Extrai o texto da mensagem (Z-API pode enviar como string em message, ou text.message, ou conversation)
+        let textoMsg = ''
+        if (typeof body.text?.message === 'string') textoMsg = body.text.message
+        else if (typeof body.message === 'string') textoMsg = body.message
+        else if (typeof body.message?.conversation === 'string') textoMsg = body.message.conversation
+        else if (typeof body.message?.text === 'string') textoMsg = body.message.text
+        else if (typeof body.message?.extendedTextMessage?.text === 'string') textoMsg = body.message.extendedTextMessage.text
 
+        textoMsg = textoMsg.toLowerCase()
         console.log(`[Z-API Nova Mensagem de ${telefoneRemetente}]: ${textoMsg}`)
 
         // Se o cliente pedir PIX ou boleto
