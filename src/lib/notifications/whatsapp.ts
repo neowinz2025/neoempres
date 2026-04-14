@@ -29,36 +29,26 @@ export async function sendWhatsApp(
   try {
     const phone = telefone.replace(/\D/g, '')
 
-    // Se o usuário colocou o endpoint original de API SaaS tipo Z-API ou UaZapi completo, ele usará direto.
-    // Se não, no fallback assumimos padrão sendText
+    // Z-API Helper: Se o usuário colou a URL completa de Send-Text
     let endpoint = baseUrl.trim()
-    const isUazapi = endpoint.toLowerCase().includes('uazapi')
-
-    if (!endpoint.toLowerCase().includes('sendtext') && !endpoint.toLowerCase().includes('send-text') && !endpoint.toLowerCase().includes('send/text')) {
-       if (isUazapi) {
-         endpoint = `${endpoint.replace(/\/$/, '')}/send/text`
-       } else {
-         endpoint = `${endpoint.replace(/\/$/, '')}/message/sendText/${instanceName}`
-       }
+    if (!endpoint.startsWith('http')) {
+       // Se o usuário colocou apenas o ID da Instância Z-API e o Token
+       endpoint = `https://api.z-api.io/instances/${endpoint}/token/${apiKey}/send-text`
+    } else if (!endpoint.toLowerCase().includes('send-text') && !endpoint.toLowerCase().includes('sendtext')) {
+       // Se colou a base URL mas esqueceu o send-text
+       endpoint = `${endpoint.replace(/\/$/, '')}/send-text`
     }
     
-    // UaZapi V2 envia `body: { number, text }` e header `token` ou `apikey`.
-    // Evolution V1/V2 envia `body: { number, text }` e header `apikey`.
-    
+    // Z-API envia `body: { phone, message }` e autenticação com `Client-Token`
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': apiKey, 
-        'token': apiKey, // UaZapi V2 alternativo
-        'Client-Token': apiKey, 
-        'Authorization': `Bearer ${apiKey}` 
+        'Client-Token': apiKey
       },
       body: JSON.stringify({
-        number: `55${phone}`, 
-        phone: `55${phone}`,  
-        text: mensagem,       
-        message: mensagem     
+        phone: `55${phone}`,  // Padrão do Z-API
+        message: mensagem     // Padrão do Z-API
       }),
     })
 

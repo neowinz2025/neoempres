@@ -397,8 +397,8 @@ export default function ConfiguracoesPage() {
                 <span className="text-xl">💬</span>
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-800 tracking-tight">Cobrança via WhatsApp (UaZapi / MegaAPI)</h2>
-                <p className="text-sm text-slate-500">Envie cobranças automaticamente pelo WhatsApp</p>
+                <h2 className="text-lg font-bold text-slate-800 tracking-tight">Cobrança via WhatsApp (Z-API)</h2>
+                <p className="text-sm text-slate-500">Envie cobranças automaticamente pelo sistema Z-API</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -419,47 +419,16 @@ export default function ConfiguracoesPage() {
 
           <div className={`mt-6 space-y-4 ${configs['EVOLUTION_ENABLED'] !== 'true' && 'opacity-50 pointer-events-none'}`}>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">URL da Instância API (Endpoint)</label>
-              <input type="url" value={configs['EVOLUTION_URL'] || ''} onChange={(e) => handleChange('EVOLUTION_URL', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Ex: https://uazapi.com/instance/sua-instancia" />
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Z-API: Entidade / ID da Instância (Ex: 3B2D0A...)</label>
+              <input type="text" value={configs['EVOLUTION_URL'] || ''} onChange={(e) => handleChange('EVOLUTION_URL', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Cole aqui o ID da Instância" />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">API Key / Token</label>
-                <input type="password" value={configs['EVOLUTION_API_KEY'] || ''} onChange={(e) => handleChange('EVOLUTION_API_KEY', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Nome da Instância (Opcional - p/ QR Code)</label>
-                <input type="text" value={configs['EVOLUTION_INSTANCE'] || ''} onChange={(e) => handleChange('EVOLUTION_INSTANCE', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Ex: minhaloja1" />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Z-API: Token da Instância</label>
+              <input type="password" value={configs['EVOLUTION_API_KEY'] || ''} onChange={(e) => handleChange('EVOLUTION_API_KEY', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
             </div>
-
-            {configs['EVOLUTION_ENABLED'] === 'true' && (
-              <div className="mt-6 p-4 border border-slate-200 rounded-xl bg-slate-50 flex flex-col items-center justify-center gap-4">
-                <div className="text-center">
-                  <h3 className="font-semibold text-slate-800">Conexão do WhatsApp no Sistema</h3>
-                  <p className="text-xs text-slate-500">
-                    Se a UaZapi/MegaAPI exigir, você pode gerar/ver o QR Code direto daqui.<br />
-                    Status atual: <span className="font-bold text-blue-600">{waState || 'Desconhecido'}</span>
-                  </p>
-                </div>
-                
-                {waQrCode && (
-                  <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-200">
-                    <img src={waQrCode.startsWith('data:image') ? waQrCode : `data:image/png;base64,${waQrCode}`} alt="QR Code WhatsApp" className="w-48 h-48" />
-                  </div>
-                )}
-                
-                <button
-                  type="button"
-                  onClick={checkWhatsApp}
-                  disabled={waLoading}
-                  className="btn-secondary text-sm px-6"
-                >
-                  {waLoading ? 'Comunicando...' : 'Carregar Status / Gerar QR Code'}
-                </button>
-              </div>
-            )}
-            
+            <p className="text-xs text-slate-500 ml-1">
+              Cole o ID e o Token extraídos do painel oficial: <a href="https://developer.z-api.io/" target="_blank" className="text-blue-500 underline">Acessar Painel Z-API</a>
+            </p>
           </div>
         </div>
 
