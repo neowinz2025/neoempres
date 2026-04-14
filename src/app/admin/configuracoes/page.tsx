@@ -17,10 +17,31 @@ export default function ConfiguracoesPage() {
   }
 
   // Senha states
-  // Senha states
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+
+  const [waLoading, setWaLoading] = useState(false)
+  const [waState, setWaState] = useState('')
+  const [waQrCode, setWaQrCode] = useState('')
+
+  const checkWhatsApp = async () => {
+    setWaLoading(true)
+    setWaQrCode('')
+    try {
+      const res = await fetch('/api/whatsapp/connect')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao conectar')
+      setWaState(data.state || 'Nenhum')
+      if (data.qrcode) {
+        setWaQrCode(data.qrcode)
+      }
+    } catch (e: any) {
+      showToast(e.message, 'error')
+    } finally {
+      setWaLoading(false)
+    }
+  }
 
   // Read theme from localStorage on mount
   useEffect(() => {
@@ -406,7 +427,38 @@ export default function ConfiguracoesPage() {
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">API Key / Token</label>
                 <input type="password" value={configs['EVOLUTION_API_KEY'] || ''} onChange={(e) => handleChange('EVOLUTION_API_KEY', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Nome da Instância (Opcional - p/ QR Code)</label>
+                <input type="text" value={configs['EVOLUTION_INSTANCE'] || ''} onChange={(e) => handleChange('EVOLUTION_INSTANCE', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Ex: minhaloja1" />
+              </div>
             </div>
+
+            {configs['EVOLUTION_ENABLED'] === 'true' && (
+              <div className="mt-6 p-4 border border-slate-200 rounded-xl bg-slate-50 flex flex-col items-center justify-center gap-4">
+                <div className="text-center">
+                  <h3 className="font-semibold text-slate-800">Conexão do WhatsApp no Sistema</h3>
+                  <p className="text-xs text-slate-500">
+                    Se a UaZapi/MegaAPI exigir, você pode gerar/ver o QR Code direto daqui.<br />
+                    Status atual: <span className="font-bold text-blue-600">{waState || 'Desconhecido'}</span>
+                  </p>
+                </div>
+                
+                {waQrCode && (
+                  <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-200">
+                    <img src={waQrCode.startsWith('data:image') ? waQrCode : `data:image/png;base64,${waQrCode}`} alt="QR Code WhatsApp" className="w-48 h-48" />
+                  </div>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={checkWhatsApp}
+                  disabled={waLoading}
+                  className="btn-secondary text-sm px-6"
+                >
+                  {waLoading ? 'Comunicando...' : 'Carregar Status / Gerar QR Code'}
+                </button>
+              </div>
+            )}
             
           </div>
         </div>
