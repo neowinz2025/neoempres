@@ -64,6 +64,9 @@ export async function GET(request: NextRequest) {
            // Pega o QrCode base64
            if (data.qrcode) qrcodeBase64 = data.qrcode
            if (data.base64) qrcodeBase64 = data.base64
+        } else {
+           const errData = await stateRes.json().catch(()=>({}))
+           stateData = { state: `Erro ${stateRes.status}: ${errData.message || 'Falha na Autenticação (Token Inválido?)'}` }
         }
       } else {
         // Padrão Evolution
@@ -83,10 +86,13 @@ export async function GET(request: NextRequest) {
         })
         if (stateRes.ok) {
           stateData = await stateRes.json()
+        } else {
+          stateData = { state: `Erro ${stateRes.status}: Falha ao conectar. Verifique Base URL e Nome da Instância.` }
         }
       }
     } catch (e: any) {
       console.error('[WhatsApp] Falha ao tentar conectar:', e.message)
+      stateData = { state: 'Erro de Servidor Inalcançável' }
     }
 
     const currentState = stateData.instance?.state || stateData.state || stateData.status || 'connecting'
