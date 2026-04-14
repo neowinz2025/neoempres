@@ -32,23 +32,33 @@ export async function sendWhatsApp(
     // Se o usuário colocou o endpoint original de API SaaS tipo Z-API ou UaZapi completo, ele usará direto.
     // Se não, no fallback assumimos padrão sendText
     let endpoint = baseUrl.trim()
-    if (!endpoint.toLowerCase().includes('sendtext') && !endpoint.toLowerCase().includes('send-text')) {
-       endpoint = `${endpoint.replace(/\/$/, '')}/message/sendText/${instanceName}`
+    const isUazapi = endpoint.toLowerCase().includes('uazapi')
+
+    if (!endpoint.toLowerCase().includes('sendtext') && !endpoint.toLowerCase().includes('send-text') && !endpoint.toLowerCase().includes('send/text')) {
+       if (isUazapi) {
+         endpoint = `${endpoint.replace(/\/$/, '')}/send/text`
+       } else {
+         endpoint = `${endpoint.replace(/\/$/, '')}/message/sendText/${instanceName}`
+       }
     }
+    
+    // UaZapi V2 envia `body: { number, text }` e header `token` ou `apikey`.
+    // Evolution V1/V2 envia `body: { number, text }` e header `apikey`.
     
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': apiKey, // Evolution/UaZapi padrão
-        'Client-Token': apiKey, // Alternativa SaaS
-        'Authorization': `Bearer ${apiKey}` // Alternativa SaaS 2
+        'apikey': apiKey, 
+        'token': apiKey, // UaZapi V2 alternativo
+        'Client-Token': apiKey, 
+        'Authorization': `Bearer ${apiKey}` 
       },
       body: JSON.stringify({
-        number: `55${phone}`, // Evolution / UaZapi
-        phone: `55${phone}`,  // Z-API
-        text: mensagem,       // Evolution / UaZapi
-        message: mensagem     // Z-API
+        number: `55${phone}`, 
+        phone: `55${phone}`,  
+        text: mensagem,       
+        message: mensagem     
       }),
     })
 

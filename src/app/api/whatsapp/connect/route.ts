@@ -41,48 +41,59 @@ export async function GET(request: NextRequest) {
       cleanBaseUrl = urlObj.origin
     } catch {}
 
+    const isUazapi = cleanBaseUrl.toLowerCase().includes('uazapi')
+
     let qrcodeBase64 = null
     let stateData: any = { instance: { state: 'connecting' } }
 
     try {
-      // Endpoint Padrão SaaS (UaZapi / Evolution) para obter o QRCode
-      const connectRes = await fetch(`${cleanBaseUrl}/instance/connect/${instanceName}`, {
-        headers: { 
-          apikey: apiKey,
-          'Authorization': `Bearer ${apiKey}`
-        },
-      })
+      if (isUazapi) {
+        // UaZapi usa POST para conectar e GET para status (que inclui o qrcode)
+        await fetch(`${cleanBaseUrl}/instance/connect`, {
+          method: 'POST',
+          headers: { token: apiKey, apikey: apiKey }
+        })
+        
+        const stateRes = await fetch(`${cleanBaseUrl}/instance/status`, {
+          headers: { token: apiKey, apikey: apiKey }
+        })
+        
+        if (stateRes.ok) {
+           const data = await stateRes.json()
+           stateData = data
+           // Pega o QrCode base64
+           if (data.qrcode) qrcodeBase64 = data.qrcode
+           if (data.base64) qrcodeBase64 = data.base64
+        }
+      } else {
+        // Padrão Evolution
+        const connectRes = await fetch(`${cleanBaseUrl}/instance/connect/${instanceName}`, {
+          headers: { apikey: apiKey, 'Authorization': `Bearer ${apiKey}` },
+        })
 
-      if (connectRes.ok) {
-        const data = await connectRes.json()
-        if (data.base64) {
-          qrcodeBase64 = data.base64
-        } else if (data.qrcode && data.qrcode.base64) {
-          qrcodeBase64 = data.qrcode.base64
-        } else if (typeof data.qrcode === 'string') {
-          qrcodeBase64 = data.qrcode
+        if (connectRes.ok) {
+          const data = await connectRes.json()
+          if (data.base64) qrcodeBase64 = data.base64
+          else if (data.qrcode && data.qrcode.base64) qrcodeBase64 = data.qrcode.base64
+          else if (typeof data.qrcode === 'string') qrcodeBase64 = data.qrcode
+        }
+
+        const stateRes = await fetch(`${cleanBaseUrl}/instance/connectionState/${instanceName}`, {
+          headers: { apikey: apiKey, 'Authorization': `Bearer ${apiKey}` },
+        })
+        if (stateRes.ok) {
+          stateData = await stateRes.json()
         }
       }
     } catch (e: any) {
       console.error('[WhatsApp] Falha ao tentar conectar:', e.message)
     }
 
-    // Checa o state da conexão
-    try {
-      const stateRes = await fetch(`${cleanBaseUrl}/instance/connectionState/${instanceName}`, {
-        headers: { 
-            apikey: apiKey,
-            'Authorization': `Bearer ${apiKey}`
-        },
-      })
-      if (stateRes.ok) {
-        stateData = await stateRes.json()
-      }
-    } catch {}
+    const currentState = stateData.instance?.state || stateData.state || stateData.status || 'connecting'
 
     return NextResponse.json({
       qrcode: qrcodeBase64,
-      state: stateData.instance?.state || stateData.state || 'connecting'
+      state: currentState
     })
 
   } catch (error) {
