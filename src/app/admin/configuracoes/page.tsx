@@ -17,31 +17,10 @@ export default function ConfiguracoesPage() {
   }
 
   // Senha states
+  // Senha states
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
-
-  const [waLoading, setWaLoading] = useState(false)
-  const [waState, setWaState] = useState('')
-  const [waQrCode, setWaQrCode] = useState('')
-
-  const checkWhatsApp = async () => {
-    setWaLoading(true)
-    setWaQrCode('')
-    try {
-      const res = await fetch('/api/whatsapp/connect')
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erro ao conectar')
-      setWaState(data.state || 'Nenhum')
-      if (data.qrcode) {
-        setWaQrCode(data.qrcode)
-      }
-    } catch (e: any) {
-      showToast(e.message, 'error')
-    } finally {
-      setWaLoading(false)
-    }
-  }
 
   // Read theme from localStorage on mount
   useEffect(() => {
@@ -389,7 +368,7 @@ export default function ConfiguracoesPage() {
           )}
         </div>
 
-        {/* Notificações via Evolution API */}
+        {/* Notificações via API SaaS (UaZapi etc) */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
@@ -397,7 +376,7 @@ export default function ConfiguracoesPage() {
                 <span className="text-xl">💬</span>
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-800 tracking-tight">Cobrança via WhatsApp (Evolution API)</h2>
+                <h2 className="text-lg font-bold text-slate-800 tracking-tight">Cobrança via WhatsApp (UaZapi / MegaAPI)</h2>
                 <p className="text-sm text-slate-500">Envie cobranças automaticamente pelo WhatsApp</p>
               </div>
             </div>
@@ -419,42 +398,16 @@ export default function ConfiguracoesPage() {
 
           <div className={`mt-6 space-y-4 ${configs['EVOLUTION_ENABLED'] !== 'true' && 'opacity-50 pointer-events-none'}`}>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Evolution API URL</label>
-              <input type="url" value={configs['EVOLUTION_URL'] || ''} onChange={(e) => handleChange('EVOLUTION_URL', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Ex: http://137.184.86.179" />
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">URL da Instância API (Endpoint)</label>
+              <input type="url" value={configs['EVOLUTION_URL'] || ''} onChange={(e) => handleChange('EVOLUTION_URL', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Ex: https://uazapi.com/instance/sua-instancia" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Global API Key</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">API Key / Token</label>
                 <input type="password" value={configs['EVOLUTION_API_KEY'] || ''} onChange={(e) => handleChange('EVOLUTION_API_KEY', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
               </div>
             </div>
             
-            {configs['EVOLUTION_ENABLED'] === 'true' && (
-              <div className="mt-6 p-4 border border-slate-200 rounded-xl bg-slate-50 flex flex-col items-center justify-center gap-4">
-                <div className="text-center">
-                  <h3 className="font-semibold text-slate-800">Conexão do WhatsApp</h3>
-                  <p className="text-xs text-slate-500">
-                    O WhatsApp precisa estar conectado para disparar mensagens.<br />
-                    Status atual: <span className="font-bold">{waState || 'Desconhecido'}</span>
-                  </p>
-                </div>
-                
-                {waQrCode && (
-                  <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-200">
-                    <img src={waQrCode} alt="QR Code WhatsApp" className="w-48 h-48" />
-                  </div>
-                )}
-                
-                <button
-                  type="button"
-                  onClick={checkWhatsApp}
-                  disabled={waLoading}
-                  className="btn-secondary text-sm"
-                >
-                  {waLoading ? 'Verificando...' : 'Verificar Status / Gerar QR Code'}
-                </button>
-              </div>
-            )}
           </div>
         </div>
 

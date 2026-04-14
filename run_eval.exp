@@ -1,0 +1,6 @@
+#!/usr/bin/expect -d
+set timeout 10
+spawn ssh -o StrictHostKeyChecking=no root@137.184.86.179 "docker logs evolution_api --tail 50"
+expect "password:"
+send "hUg@9615@h\r"
+expect eof

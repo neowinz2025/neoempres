@@ -22,23 +22,33 @@ export async function sendWhatsApp(
   }
 
   if (!evolutionEnabled || !baseUrl || !apiKey) {
-    console.warn('[WhatsApp] Evolution API not configured or disabled in DB')
+    console.warn('[WhatsApp] API not configured or disabled in DB')
     return false
   }
 
   try {
     const phone = telefone.replace(/\D/g, '')
-    const endpoint = `${baseUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`
+
+    // Se o usuário colocou o endpoint original de API SaaS tipo Z-API ou UaZapi completo, ele usará direto.
+    // Se não, no fallback assumimos padrão sendText
+    let endpoint = baseUrl.trim()
+    if (!endpoint.toLowerCase().includes('sendtext') && !endpoint.toLowerCase().includes('send-text')) {
+       endpoint = `${endpoint.replace(/\/$/, '')}/message/sendText/${instanceName}`
+    }
     
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': apiKey
+        'apikey': apiKey, // Evolution/UaZapi padrão
+        'Client-Token': apiKey, // Alternativa SaaS
+        'Authorization': `Bearer ${apiKey}` // Alternativa SaaS 2
       },
       body: JSON.stringify({
-        number: `55${phone}`,
-        text: mensagem,
+        number: `55${phone}`, // Evolution / UaZapi
+        phone: `55${phone}`,  // Z-API
+        text: mensagem,       // Evolution / UaZapi
+        message: mensagem     // Z-API
       }),
     })
 
