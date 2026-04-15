@@ -26,10 +26,19 @@ export async function sendWhatsApp(
   }
 
   try {
-    const phone = telefone.replace(/\D/g, '')
+    let phone = telefone.replace(/\D/g, '')
     
+    // Remove zero à esquerda se houver (ex: 011...)
+    if (phone.startsWith('0')) {
+      phone = phone.substring(1)
+    }
+
+    // Se tiver 10 ou 11 dígitos (DDD + número), adiciona o prefixo 55
+    if (phone.length === 10 || phone.length === 11) {
+      phone = `55${phone}`
+    }
+
     // W-API: POST /message/send-text?instanceId={ID}
-    // Auth: Bearer {TOKEN}
     const endpoint = `https://api.w-api.app/v1/message/send-text?instanceId=${instanceId}`
     
     const res = await fetch(endpoint, {
@@ -39,7 +48,7 @@ export async function sendWhatsApp(
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        phone: phone.startsWith('55') ? phone : `55${phone}`, // Garante prefixo 55
+        phone,
         message: mensagem
       }),
     })
