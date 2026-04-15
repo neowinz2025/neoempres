@@ -7,13 +7,26 @@ export async function POST(request: NextRequest) {
     const payload = await request.json()
     console.log('[WhatsApp Webhook] Received:', JSON.stringify(payload))
 
-    // Note: W-API payload structure can vary, but usually has message.body and message.from
-    // or data.body and data.from for 'received_message' type
-    const messageData = payload.data || payload.message || payload
-    const body = (messageData.body || messageData.text || '').toString().toLowerCase()
-    const from = messageData.from || messageData.sender || messageData.phone
+    // Tentativa robusta de encontrar o corpo da mensagem e o remetente
+    // W-API ou instâncias similares podem enviar de formas variadas
+    let body = ""
+    let from = ""
+
+    if (payload.data) {
+      body = payload.data.body || payload.data.text || ""
+      from = payload.data.from || payload.data.phone || ""
+    } else if (payload.message) {
+      body = payload.message.body || (payload.message.text ? payload.message.text.body : "") || ""
+      from = payload.message.from || payload.message.phone || ""
+    } else {
+      body = payload.body || payload.text || ""
+      from = payload.from || payload.phone || ""
+    }
+
+    body = body.toString().toLowerCase()
 
     if (!body || !from) {
+      console.log('[WhatsApp Webhook] Ignore: No body or from found in', JSON.stringify(payload))
       return NextResponse.json({ processed: false, reason: 'No message body or sender found' })
     }
 
