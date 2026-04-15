@@ -23,16 +23,20 @@ export async function POST(request: NextRequest) {
       from = payload.from || payload.phone || ""
     }
 
-    body = body.toString().toLowerCase()
+    body = body.toString().toLowerCase().trim()
+
+    console.log(`[WhatsApp Webhook] Body: "${body}", From: "${from}"`)
 
     if (!body || !from) {
-      console.log('[WhatsApp Webhook] Ignore: No body or from found in', JSON.stringify(payload))
+      console.log('[WhatsApp Webhook] Ignore: No body or from found')
       return NextResponse.json({ processed: false, reason: 'No message body or sender found' })
     }
 
     // Keyword detection
-    const keywords = ['pix', 'chave', 'pagamento', 'pagar', 'pago']
+    const keywords = ['pix', 'chave', 'pagamento', 'pagar', 'pago', 'valor', 'conta']
     const matches = keywords.some(k => body.includes(k))
+
+    console.log(`[WhatsApp Webhook] Keyword matches: ${matches}`)
 
     if (matches) {
       // Fetch PIX configs
@@ -59,8 +63,11 @@ export async function POST(request: NextRequest) {
       if (pixInfo) {
         const responseMessage = `Olá! 🤖 Identificamos que você solicitou informações de pagamento.\n\n${pixInfo}\n\nApós realizar o pagamento, por favor envie o comprovante por aqui.`
         
-        await sendWhatsApp(from, responseMessage)
-        return NextResponse.json({ processed: true, action: 'Replied with PIX info' })
+        console.log(`[WhatsApp Webhook] Attempting reply to ${from}...`)
+        const ok = await sendWhatsApp(from, responseMessage)
+        console.log(`[WhatsApp Webhook] Reply result: ${ok}`)
+        
+        return NextResponse.json({ processed: true, action: 'Replied with PIX info', success: ok })
       }
     }
 

@@ -59,7 +59,10 @@ export async function sendWhatsApp(
     }
 
     const data = await res.json()
-    return !!data.messageId // W-API retorna messageId em caso de sucesso
+    // W-API pode retornar messageId, id, key ou result
+    const success = !!(data.messageId || data.id || data.key || data.result)
+    if (!success) console.warn('[WhatsApp] W-API Success Key not found in:', JSON.stringify(data))
+    return success
   } catch (error) {
     console.error('[WhatsApp] W-API Error:', error)
     return false
