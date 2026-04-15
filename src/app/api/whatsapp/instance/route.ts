@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   if (!session || session.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
   }
-
+  try {
     let integratorToken = ""
     
     // 1. Try to get token from request body (unsaved token)
