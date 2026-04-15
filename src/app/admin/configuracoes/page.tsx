@@ -9,6 +9,7 @@ export default function ConfiguracoesPage() {
   const [testingBot, setTestingBot] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [toastType, setToastType] = useState<'success' | 'error'>('success')
+  const [creatingInstance, setCreatingInstance] = useState(false)
   
   const showToast = (msg: string, type: 'success'|'error' = 'success') => {
     setToastMsg(msg)
@@ -40,6 +41,35 @@ export default function ConfiguracoesPage() {
       showToast(e.message, 'error')
     } finally {
       setWaLoading(false)
+    }
+  }
+
+  const handleCreateInstance = async () => {
+    if (!configs['WAPI_INTEGRATOR_TOKEN']) {
+      showToast('Por favor, insira e salve o Token de Integrador primeiro.', 'error')
+      return
+    }
+
+    setCreatingInstance(true)
+    try {
+      const res = await fetch('/api/whatsapp/instance', { method: 'POST' })
+      const data = await res.json()
+      
+      if (!res.ok) throw new Error(data.error || 'Erro ao criar instância')
+      
+      showToast('✅ Instância criada com sucesso!', 'success')
+      
+      // Refresh configs to get the new ID and Token
+      const confRes = await fetch('/api/configs')
+      const confData = await confRes.json()
+      setConfigs(confData.data || {})
+      
+      // Auto trigger check to show QR
+      setTimeout(checkWhatsApp, 1000)
+    } catch (e: any) {
+      showToast(e.message, 'error')
+    } finally {
+      setCreatingInstance(false)
     }
   }
 
@@ -419,19 +449,43 @@ export default function ConfiguracoesPage() {
 
           <div className={`mt-6 space-y-4 ${configs['WAPI_ENABLED'] !== 'true' && 'opacity-50 pointer-events-none'}`}>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">W-API: ID da Instância</label>
-              <input type="text" value={configs['WAPI_INSTANCE_ID'] || ''} onChange={(e) => handleChange('WAPI_INSTANCE_ID', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Cole aqui o ID da Instância" />
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">W-API: Token de Integrador (Opcional)</label>
+              <input type="password" value={configs['WAPI_INTEGRATOR_TOKEN'] || ''} onChange={(e) => handleChange('WAPI_INTEGRATOR_TOKEN', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
+              <p className="text-[10px] text-slate-400 mt-1">Necessário apenas para criação automática de instâncias.</p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">W-API: Token API</label>
-              <input type="password" value={configs['WAPI_TOKEN'] || ''} onChange={(e) => handleChange('WAPI_TOKEN', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
+
+            <div className="pt-2 border-t border-slate-100 mt-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">{configs['WAPI_INSTANCE_ID'] ? 'W-API: ID da Instância' : 'W-API: Configuração Automática'}</label>
+              {!configs['WAPI_INSTANCE_ID'] ? (
+                <button
+                  type="button"
+                  disabled={creatingInstance}
+                  onClick={handleCreateInstance}
+                  className="w-full bg-[#f0f9ff] border-2 border-dashed border-[#0ea5e9] text-[#0ea5e9] hover:bg-[#e0f2fe] py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                >
+                  {creatingInstance ? (
+                    <div className="w-4 h-4 border-2 border-[#0ea5e9] border-t-transparent rounded-full animate-spin" />
+                  ) : '✨ Criar Nova Instância Automaticamente'}
+                </button>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <input type="text" value={configs['WAPI_INSTANCE_ID'] || ''} onChange={(e) => handleChange('WAPI_INSTANCE_ID', e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="ID da Instância" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">W-API: Token API</label>
+                    <input type="password" value={configs['WAPI_TOKEN'] || ''} onChange={(e) => handleChange('WAPI_TOKEN', e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Token API" />
+                  </div>
+                </div>
+              )}
             </div>
+
             <div className="flex items-center gap-4 py-3">
               <button
                 type="button"
                 onClick={checkWhatsApp}
-                disabled={waLoading}
-                className="bg-white border border-[#10b981] text-[#10b981] hover:bg-[#ecfdf5] px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2"
+                disabled={waLoading || !configs['WAPI_INSTANCE_ID']}
+                className="bg-white border border-[#10b981] text-[#10b981] hover:bg-[#ecfdf5] px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
               >
                 {waLoading ? <div className="w-3 h-3 border-2 border-[#10b981] border-t-transparent rounded-full animate-spin" /> : '🔄'}
                 Gerar QR Code / Status
