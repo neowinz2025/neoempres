@@ -546,6 +546,81 @@ export default function ConfiguracoesPage() {
           </div>
         </div>
 
+        {/* Teste de Envio WhatsApp */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center border border-green-100">
+              <span className="text-xl">🧪</span>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight">Teste de Envio (W-API)</h2>
+              <p className="text-sm text-slate-500">Envie uma mensagem manual para testar a conexão</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Número de Destino</label>
+                <input 
+                  type="tel" 
+                  id="test_wa_phone"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:border-[#10b981] outline-none" 
+                  placeholder="(11) 99999-9999" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Mensagem</label>
+                <input 
+                  type="text" 
+                  id="test_wa_message"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:border-[#10b981] outline-none" 
+                  defaultValue="Teste de envio LoanPro via W-API ✅"
+                />
+              </div>
+            </div>
+            
+            <button
+              type="button"
+              onClick={async (e) => {
+                const btn = e.currentTarget
+                const phoneInput = document.getElementById('test_wa_phone') as HTMLInputElement
+                const messageInput = document.getElementById('test_wa_message') as HTMLInputElement
+                const phone = phoneInput.value
+                const message = messageInput.value
+                
+                if (!phone) return showToast('Insira um número para o teste', 'error')
+                
+                btn.disabled = true
+                const originalText = btn.innerHTML
+                btn.innerHTML = '<div class="w-4 h-4 border-2 border-[#10b981] border-t-transparent rounded-full animate-spin"></div> Enviando...'
+                
+                try {
+                  const res = await fetch('/api/whatsapp/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, message })
+                  })
+                  const data = await res.json()
+                  if (res.ok) {
+                    showToast('✅ Mensagem enviada com sucesso!', 'success')
+                  } else {
+                    showToast(data.error || 'Erro no envio do teste', 'error')
+                  }
+                } catch {
+                  showToast('Erro de rede ao testar', 'error')
+                } finally {
+                  btn.disabled = false
+                  btn.innerHTML = originalText
+                }
+              }}
+              className="w-full bg-white border border-[#10b981] text-[#10b981] hover:bg-green-50 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+            >
+              🚀 Enviar Mensagem de Teste
+            </button>
+          </div>
+        </div>
+
         {/* Notificações via Telegram */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
            <div className="flex items-center justify-between mb-6">
