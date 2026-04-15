@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendWhatsApp } from '@/lib/notifications/whatsapp'
 
+export async function GET() {
+  return NextResponse.json({ 
+    status: 'active', 
+    message: 'Webhook do WhatsApp está funcionando corretamente. Aguardando conexões POST do W-API.' 
+  })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.json()
