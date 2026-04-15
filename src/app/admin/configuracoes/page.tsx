@@ -52,7 +52,13 @@ export default function ConfiguracoesPage() {
 
     setCreatingInstance(true)
     try {
-      const res = await fetch('/api/whatsapp/instance', { method: 'POST' })
+      const res = await fetch('/api/whatsapp/instance', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          integratorToken: configs['WAPI_INTEGRATOR_TOKEN'] 
+        })
+      })
       const data = await res.json()
       
       if (!res.ok) throw new Error(data.error || 'Erro ao criar instância')

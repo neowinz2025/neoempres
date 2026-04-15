@@ -8,17 +8,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
   }
 
-  try {
-    const dbConfigs = await prisma.config.findMany({
-      where: {
-        key: 'WAPI_INTEGRATOR_TOKEN',
-      },
-    })
+    let integratorToken = ""
     
-    const integratorToken = dbConfigs[0]?.value
+    // 1. Try to get token from request body (unsaved token)
+    try {
+      const body = await request.json()
+      if (body.integratorToken && !body.integratorToken.includes('•')) {
+        integratorToken = body.integratorToken
+      }
+    } catch (e) {
+      // Body might be empty, ignore
+    }
+
+    // 2. If not in body, get from database
+    if (!integratorToken) {
+      const dbConfigs = await prisma.config.findFirst({
+        where: { key: 'WAPI_INTEGRATOR_TOKEN' },
+      })
+      integratorToken = dbConfigs?.value || ""
+    }
 
     if (!integratorToken) {
-      return NextResponse.json({ error: 'Token de Integrador W-API não configurado.' }, { status: 400 })
+      return NextResponse.json({ error: 'Token de Integrador W-API não configurado. Insira o token e salve as configurações primeiro.' }, { status: 400 })
     }
 
     const instanceName = `LoanPro_${Date.now()}`
