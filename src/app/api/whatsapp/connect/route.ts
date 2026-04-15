@@ -39,7 +39,12 @@ export async function GET(request: NextRequest) {
       const statusRes = await fetch(`https://api.w-api.app/v1/instance/status-instance?instanceId=${instanceId}`, { headers })
       if (statusRes.ok) {
         const statusData = await statusRes.json()
-        state = statusData.state || 'connecting'
+        // W-API return examples: { connected: true } or { state: 'CONNECTED' }
+        if (statusData.connected === true || statusData.state === 'CONNECTED') {
+          state = 'CONNECTED'
+        } else {
+          state = statusData.state || 'DISCONNECTED'
+        }
       }
 
       // 2. If not connected, get QR Code
@@ -47,8 +52,10 @@ export async function GET(request: NextRequest) {
         const qrRes = await fetch(`https://api.w-api.app/v1/instance/qr-code?instanceId=${instanceId}`, { headers })
         if (qrRes.ok) {
           const qrData = await qrRes.json()
-          if (qrData.base64) {
-            qrcodeBase64 = qrData.base64
+          if (qrData.qrcode) {
+            qrcodeBase64 = qrData.qrcode
+          } else if (qrData.base64) {
+             qrcodeBase64 = qrData.base64
           }
         }
       }
