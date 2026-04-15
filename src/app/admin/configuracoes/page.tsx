@@ -454,36 +454,39 @@ export default function ConfiguracoesPage() {
           </div>
 
           <div className={`mt-6 space-y-4 ${configs['WAPI_ENABLED'] !== 'true' && 'opacity-50 pointer-events-none'}`}>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">W-API: Token de Integrador (Opcional)</label>
-              <input type="password" value={configs['WAPI_INTEGRATOR_TOKEN'] || ''} onChange={(e) => handleChange('WAPI_INTEGRATOR_TOKEN', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
-              <p className="text-[10px] text-slate-400 mt-1">Necessário apenas para criação automática de instâncias.</p>
+          <div className={`mt-6 space-y-5 ${configs['WAPI_ENABLED'] !== 'true' && 'opacity-50 pointer-events-none'}`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">W-API: ID da Instância</label>
+                <input type="text" value={configs['WAPI_INSTANCE_ID'] || ''} onChange={(e) => handleChange('WAPI_INSTANCE_ID', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Ex: 3B2D0A..." />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">W-API: Token da Instância</label>
+                <input type="password" value={configs['WAPI_TOKEN'] || ''} onChange={(e) => handleChange('WAPI_TOKEN', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
+              </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 mt-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">{configs['WAPI_INSTANCE_ID'] ? 'W-API: ID da Instância' : 'W-API: Configuração Automática'}</label>
-              {!configs['WAPI_INSTANCE_ID'] ? (
-                <button
-                  type="button"
-                  disabled={creatingInstance}
-                  onClick={handleCreateInstance}
-                  className="w-full bg-[#f0f9ff] border-2 border-dashed border-[#0ea5e9] text-[#0ea5e9] hover:bg-[#e0f2fe] py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-                >
-                  {creatingInstance ? (
-                    <div className="w-4 h-4 border-2 border-[#0ea5e9] border-t-transparent rounded-full animate-spin" />
-                  ) : '✨ Criar Nova Instância Automaticamente'}
-                </button>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <input type="text" value={configs['WAPI_INSTANCE_ID'] || ''} onChange={(e) => handleChange('WAPI_INSTANCE_ID', e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="ID da Instância" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">W-API: Token API</label>
-                    <input type="password" value={configs['WAPI_TOKEN'] || ''} onChange={(e) => handleChange('WAPI_TOKEN', e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Token API" />
-                  </div>
+            {/* Opções de Integrador (Automação) */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-6">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Automação para Parceiros (Opcional)</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Token de Integrador (Master)</label>
+                  <input type="password" value={configs['WAPI_INTEGRATOR_TOKEN'] || ''} onChange={(e) => handleChange('WAPI_INTEGRATOR_TOKEN', e.target.value)} className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] outline-none" placeholder="Token de Parceiro W-API" />
                 </div>
-              )}
+                {!configs['WAPI_INSTANCE_ID'] && (
+                  <button
+                    type="button"
+                    disabled={creatingInstance}
+                    onClick={handleCreateInstance}
+                    className="w-full bg-white border border-[#0ea5e9] text-[#0ea5e9] hover:bg-[#f0f9ff] py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2"
+                  >
+                    {creatingInstance ? (
+                      <div className="w-3 h-3 border-2 border-[#0ea5e9] border-t-transparent rounded-full animate-spin" />
+                    ) : '✨ Criar Instância Automaticamente (Requer Token Integrador)'}
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-4 py-3">
