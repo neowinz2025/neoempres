@@ -11,99 +11,60 @@ export async function GET(request: NextRequest) {
   try {
     const dbConfigs = await prisma.config.findMany({
       where: {
-        key: { in: ['EVOLUTION_URL', 'EVOLUTION_API_KEY', 'EVOLUTION_INSTANCE'] },
+        key: { in: ['WAPI_INSTANCE_ID', 'WAPI_TOKEN'] },
       },
     })
     
-    let baseUrl = ''
-    let apiKey = ''
-    let instanceName = ''
+    let instanceId = ''
+    let token = ''
 
     dbConfigs.forEach((c) => {
-      if (c.key === 'EVOLUTION_URL') baseUrl = c.value || ''
-      if (c.key === 'EVOLUTION_API_KEY') apiKey = c.value || ''
-      if (c.key === 'EVOLUTION_INSTANCE') instanceName = c.value || ''
+      if (c.key === 'WAPI_INSTANCE_ID') instanceId = c.value || ''
+      if (c.key === 'WAPI_TOKEN') token = c.value || ''
     })
 
-    if (!baseUrl || !apiKey || !instanceName) {
-      return NextResponse.json({ error: 'Preencha a URL, a API Key e o Nome da Instância para gerar o QR Code.' }, { status: 400 })
+    if (!instanceId || !token) {
+      return NextResponse.json({ error: 'Preencha o Instance ID e o Token do W-API nas configurações.' }, { status: 400 })
     }
 
-    let cleanBaseUrl = baseUrl.replace(/\/$/, '')
-    // Se colaram só o domínio
-    if (!cleanBaseUrl.startsWith('http://') && !cleanBaseUrl.startsWith('https://')) {
-      cleanBaseUrl = `https://${cleanBaseUrl}`
+    const headers = {
+      'Authorization': `Bearer ${token}`
     }
-
-    // Se no endpoint eles colaram um `/message/sendText/...` , nós pegamos apenas a raiz da url
-    try {
-      const urlObj = new URL(cleanBaseUrl)
-      cleanBaseUrl = urlObj.origin
-    } catch {}
-
-    const isUazapi = cleanBaseUrl.toLowerCase().includes('uazapi')
 
     let qrcodeBase64 = null
-    let stateData: any = { instance: { state: 'connecting' } }
+    let state = 'connecting'
 
     try {
-      if (isUazapi) {
-        // UaZapi usa POST para conectar e GET para status (que inclui o qrcode)
-        await fetch(`${cleanBaseUrl}/instance/connect`, {
-          method: 'POST',
-          headers: { token: apiKey, apikey: apiKey }
-        })
-        
-        const stateRes = await fetch(`${cleanBaseUrl}/instance/status`, {
-          headers: { token: apiKey, apikey: apiKey }
-        })
-        
-        if (stateRes.ok) {
-           const data = await stateRes.json()
-           stateData = data
-           // Pega o QrCode base64
-           if (data.qrcode) qrcodeBase64 = data.qrcode
-           if (data.base64) qrcodeBase64 = data.base64
-        } else {
-           const errData = await stateRes.json().catch(()=>({}))
-           stateData = { state: `Erro ${stateRes.status}: ${errData.message || 'Falha na Autenticação (Token Inválido?)'}` }
-        }
-      } else {
-        // Padrão Evolution
-        const connectRes = await fetch(`${cleanBaseUrl}/instance/connect/${instanceName}`, {
-          headers: { apikey: apiKey, 'Authorization': `Bearer ${apiKey}` },
-        })
+      // 1. Get Instance Status
+      const statusRes = await fetch(`https://api.w-api.app/v1/instance/status-instance?instanceId=${instanceId}`, { headers })
+      if (statusRes.ok) {
+        const statusData = await statusRes.json()
+        state = statusData.state || 'connecting'
+      }
 
-        if (connectRes.ok) {
-          const data = await connectRes.json()
-          if (data.base64) qrcodeBase64 = data.base64
-          else if (data.qrcode && data.qrcode.base64) qrcodeBase64 = data.qrcode.base64
-          else if (typeof data.qrcode === 'string') qrcodeBase64 = data.qrcode
-        }
-
-        const stateRes = await fetch(`${cleanBaseUrl}/instance/connectionState/${instanceName}`, {
-          headers: { apikey: apiKey, 'Authorization': `Bearer ${apiKey}` },
-        })
-        if (stateRes.ok) {
-          stateData = await stateRes.json()
-        } else {
-          stateData = { state: `Erro ${stateRes.status}: Falha ao conectar. Verifique Base URL e Nome da Instância.` }
+      // 2. If not connected, get QR Code
+      if (state !== 'CONNECTED') {
+        const qrRes = await fetch(`https://api.w-api.app/v1/instance/qr-code?instanceId=${instanceId}`, { headers })
+        if (qrRes.ok) {
+          const qrData = await qrRes.json()
+          if (qrData.base64) {
+            qrcodeBase64 = qrData.base64
+          }
         }
       }
     } catch (e: any) {
-      console.error('[WhatsApp] Falha ao tentar conectar:', e.message)
-      stateData = { state: 'Erro de Servidor Inalcançável' }
+      console.error('[WhatsApp] W-API connection failure:', e.message)
+      state = 'Erro de Servidor Inalcançável'
     }
-
-    const currentState = stateData.instance?.state || stateData.state || stateData.status || 'connecting'
 
     return NextResponse.json({
       qrcode: qrcodeBase64,
-      state: currentState
+      state: state
     })
 
   } catch (error) {
     console.error('[WhatsApp Connect Error]:', error)
-    return NextResponse.json({ error: 'Erro ao comunicar com a API provedora.' }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao comunicar com o W-API.' }, { status: 500 })
   }
 }
+

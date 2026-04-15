@@ -6,60 +6,54 @@ export async function sendWhatsApp(
 ): Promise<boolean> {
   const configsDB = await prisma.config.findMany({
     where: { 
-      key: { in: ['EVOLUTION_ENABLED', 'EVOLUTION_URL', 'EVOLUTION_API_KEY'] }
+      key: { in: ['WAPI_ENABLED', 'WAPI_INSTANCE_ID', 'WAPI_TOKEN'] }
     }
   })
 
-  let evolutionEnabled = false
-  let baseUrl = ''
-  let apiKey = ''
-  const instanceName = 'neoempres'
+  let wapiEnabled = false
+  let instanceId = ''
+  let token = ''
 
   for (const c of configsDB) {
-    if (c.key === 'EVOLUTION_ENABLED') evolutionEnabled = c.value === 'true'
-    if (c.key === 'EVOLUTION_URL') baseUrl = c.value || ''
-    if (c.key === 'EVOLUTION_API_KEY') apiKey = c.value || ''
+    if (c.key === 'WAPI_ENABLED') wapiEnabled = c.value === 'true'
+    if (c.key === 'WAPI_INSTANCE_ID') instanceId = c.value || ''
+    if (c.key === 'WAPI_TOKEN') token = c.value || ''
   }
 
-  if (!evolutionEnabled || !baseUrl || !apiKey) {
-    console.warn('[WhatsApp] API not configured or disabled in DB')
+  if (!wapiEnabled || !instanceId || !token) {
+    console.warn('[WhatsApp] W-API not configured or disabled in DB')
     return false
   }
 
   try {
     const phone = telefone.replace(/\D/g, '')
-
-    // Z-API Helper: Se o usuário colou a URL completa de Send-Text
-    let endpoint = baseUrl.trim()
-    if (!endpoint.startsWith('http')) {
-       // Se o usuário colocou apenas o ID da Instância Z-API e o Token
-       endpoint = `https://api.z-api.io/instances/${endpoint}/token/${apiKey}/send-text`
-    } else if (!endpoint.toLowerCase().includes('send-text') && !endpoint.toLowerCase().includes('sendtext')) {
-       // Se colou a base URL mas esqueceu o send-text
-       endpoint = `${endpoint.replace(/\/$/, '')}/send-text`
-    }
     
-    // Z-API envia `body: { phone, message }` e autenticação com `Client-Token`
+    // W-API: POST /message/send-text?instanceId={ID}
+    // Auth: Bearer {TOKEN}
+    const endpoint = `https://api.w-api.app/v1/message/send-text?instanceId=${instanceId}`
+    
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Client-Token': apiKey
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        phone: `55${phone}`,  // Padrão do Z-API
-        message: mensagem     // Padrão do Z-API
+        phone: phone.startsWith('55') ? phone : `55${phone}`, // Garante prefixo 55
+        message: mensagem
       }),
     })
 
     if (!res.ok) {
-      console.error('[WhatsApp] Error:', await res.text())
+      console.error('[WhatsApp] W-API Error:', await res.text())
       return false
     }
 
-    return true
+    const data = await res.json()
+    return !!data.messageId // W-API retorna messageId em caso de sucesso
   } catch (error) {
-    console.error('[WhatsApp] Error:', error)
+    console.error('[WhatsApp] W-API Error:', error)
     return false
   }
 }
+

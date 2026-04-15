@@ -389,7 +389,7 @@ export default function ConfiguracoesPage() {
           )}
         </div>
 
-        {/* Notificações via API SaaS (UaZapi etc) */}
+        {/* Notificações via W-API */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
@@ -397,37 +397,60 @@ export default function ConfiguracoesPage() {
                 <span className="text-xl">💬</span>
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-800 tracking-tight">Cobrança via WhatsApp (Z-API)</h2>
-                <p className="text-sm text-slate-500">Envie cobranças automaticamente pelo sistema Z-API</p>
+                <h2 className="text-lg font-bold text-slate-800 tracking-tight">Cobrança via WhatsApp (W-API)</h2>
+                <p className="text-sm text-slate-500">Envie cobranças automaticamente pelo sistema W-API</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {configs['EVOLUTION_ENABLED'] === 'true' ? (
-                <button type="button" onClick={() => handleChange('EVOLUTION_ENABLED', 'false')} className="w-11 h-6 bg-[#0284c7] rounded-full relative transition-colors cursor-pointer border-2 border-[#0284c7]">
+              {configs['WAPI_ENABLED'] === 'true' ? (
+                <button type="button" onClick={() => handleChange('WAPI_ENABLED', 'false')} className="w-11 h-6 bg-[#0284c7] rounded-full relative transition-colors cursor-pointer border-2 border-[#0284c7]">
                   <div className="absolute right-0.5 top-0.5 w-4 h-4 bg-white rounded-full"></div>
                 </button>
               ) : (
-                <button type="button" onClick={() => handleChange('EVOLUTION_ENABLED', 'true')} className="w-11 h-6 bg-slate-200 rounded-full relative transition-colors cursor-pointer border-2 border-slate-200">
+                <button type="button" onClick={() => handleChange('WAPI_ENABLED', 'true')} className="w-11 h-6 bg-slate-200 rounded-full relative transition-colors cursor-pointer border-2 border-slate-200">
                   <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full"></div>
                 </button>
               )}
-              <span className={`text-sm font-semibold ${configs['EVOLUTION_ENABLED'] === 'true' ? 'text-[#0284c7]' : 'text-slate-500'}`}>
-                {configs['EVOLUTION_ENABLED'] === 'true' ? 'Ativado' : 'Desativado'}
+              <span className={`text-sm font-semibold ${configs['WAPI_ENABLED'] === 'true' ? 'text-[#0284c7]' : 'text-slate-500'}`}>
+                {configs['WAPI_ENABLED'] === 'true' ? 'Ativado' : 'Desativado'}
               </span>
             </div>
           </div>
 
-          <div className={`mt-6 space-y-4 ${configs['EVOLUTION_ENABLED'] !== 'true' && 'opacity-50 pointer-events-none'}`}>
+          <div className={`mt-6 space-y-4 ${configs['WAPI_ENABLED'] !== 'true' && 'opacity-50 pointer-events-none'}`}>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Z-API: Entidade / ID da Instância (Ex: 3B2D0A...)</label>
-              <input type="text" value={configs['EVOLUTION_URL'] || ''} onChange={(e) => handleChange('EVOLUTION_URL', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Cole aqui o ID da Instância" />
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">W-API: ID da Instância</label>
+              <input type="text" value={configs['WAPI_INSTANCE_ID'] || ''} onChange={(e) => handleChange('WAPI_INSTANCE_ID', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="Cole aqui o ID da Instância" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Z-API: Token da Instância</label>
-              <input type="password" value={configs['EVOLUTION_API_KEY'] || ''} onChange={(e) => handleChange('EVOLUTION_API_KEY', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">W-API: Token API</label>
+              <input type="password" value={configs['WAPI_TOKEN'] || ''} onChange={(e) => handleChange('WAPI_TOKEN', e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none" placeholder="••••••••••••••••••••" />
             </div>
+            <div className="flex items-center gap-4 py-3">
+              <button
+                type="button"
+                onClick={checkWhatsApp}
+                disabled={waLoading}
+                className="bg-white border border-[#10b981] text-[#10b981] hover:bg-[#ecfdf5] px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2"
+              >
+                {waLoading ? <div className="w-3 h-3 border-2 border-[#10b981] border-t-transparent rounded-full animate-spin" /> : '🔄'}
+                Gerar QR Code / Status
+              </button>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${waState === 'CONNECTED' ? 'bg-[#10b981] animate-pulse' : 'bg-slate-300'}`} />
+                <span className="text-xs font-semibold text-slate-600">Status: {waState || 'Desconhecido'}</span>
+              </div>
+            </div>
+
+            {waQrCode && (
+              <div className="mt-4 p-4 bg-white border border-slate-200 rounded-xl flex flex-col items-center gap-3">
+                <img src={waQrCode} alt="WhatsApp QR Code" className="w-48 h-48" />
+                <p className="text-xs text-slate-500 font-medium">Escaneie com seu WhatsApp para conectar</p>
+              </div>
+            )}
+
             <p className="text-xs text-slate-500 ml-1">
-              Cole o ID e o Token extraídos do painel oficial: <a href="https://developer.z-api.io/" target="_blank" className="text-blue-500 underline">Acessar Painel Z-API</a>
+              Obtenha suas credenciais no painel: <a href="https://painel.w-api.app/" target="_blank" className="text-blue-500 underline">Acessar Painel W-API</a>
             </p>
           </div>
         </div>
@@ -592,62 +615,6 @@ export default function ConfiguracoesPage() {
           </div>
           <p className="text-xs text-slate-400 mt-3 ml-1">A senha deve ter no mínimo 6 caracteres. Deixe vazio para não alterar.</p>
 
-          {/* Biometric Registration */}
-          <div className="mt-6 pt-5 border-t border-slate-200">
-            <h3 className="text-sm font-bold text-slate-700 mb-2">Login com Biometria</h3>
-            <p className="text-xs text-slate-500 mb-3">Registre sua biometria (Touch ID, Face ID ou leitor digital) para fazer login sem senha.</p>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  // Check if WebAuthn is supported
-                  if (!window.PublicKeyCredential) {
-                    showToast('WebAuthn não suportado neste navegador. Use Safari no iPhone.', 'error')
-                    return
-                  }
-                  const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-                  if (!available) {
-                    showToast('Biometria não disponível neste dispositivo.', 'error')
-                    return
-                  }
-
-                  const optRes = await fetch('/api/auth/webauthn/register')
-                  if (!optRes.ok) {
-                    const errData = await optRes.json().catch(() => ({}))
-                    showToast(errData.error || `Erro do servidor (${optRes.status})`, 'error')
-                    return
-                  }
-                  const { options } = await optRes.json()
-                  
-                  const { startRegistration } = await import('@simplewebauthn/browser')
-                  const regResp = await startRegistration({ optionsJSON: options })
-                  
-                  const verifyRes = await fetch('/api/auth/webauthn/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(regResp),
-                  })
-                  if (verifyRes.ok) {
-                    showToast('✅ Biometria registrada! Use "Face ID / Biometria" no login.', 'success')
-                  } else {
-                    const e = await verifyRes.json()
-                    showToast(e.error || 'Erro ao verificar registro', 'error')
-                  }
-                } catch (err: unknown) {
-                  const msg = err instanceof Error ? err.message : String(err)
-                  console.error('WebAuthn registration error:', err)
-                  if (msg.includes('AbortError') || msg.includes('NotAllowedError') || msg.includes('cancelled')) {
-                    showToast('Registro cancelado pelo usuário', 'error')
-                  } else {
-                    showToast(`Erro: ${msg}`, 'error')
-                  }
-                }
-              }}
-              className="bg-[#6366f1] hover:bg-[#4f46e5] text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors inline-flex items-center gap-2"
-            >
-              🔐 Registrar Biometria
-            </button>
-          </div>
         </div>
 
         {/* Fixated Salvar Button */}

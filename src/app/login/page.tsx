@@ -9,16 +9,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [webauthnSupported, setWebauthnSupported] = useState(false)
-
-  useEffect(() => {
-    // Check WebAuthn support on client side only
-    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-        .then((available) => setWebauthnSupported(available))
-        .catch(() => setWebauthnSupported(false))
-    }
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,49 +32,6 @@ export default function LoginPage() {
       router.push('/admin')
     } catch {
       setError('Erro de conexão')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleBiometricLogin = async () => {
-    setError('')
-    setLoading(true)
-    try {
-      // 1. Get authentication options from server
-      const optRes = await fetch('/api/auth/webauthn/login')
-      if (!optRes.ok) {
-        const e = await optRes.json()
-        setError(e.error || 'Nenhuma biometria registrada. Faça login com senha e registre nas Configurações.')
-        setLoading(false)
-        return
-      }
-      const { options } = await optRes.json()
-      
-      // 2. Start browser WebAuthn authentication (Face ID / Touch ID)
-      const { startAuthentication } = await import('@simplewebauthn/browser')
-      const authResp = await startAuthentication({ optionsJSON: options })
-      
-      // 3. Send response to server for verification
-      const verifyRes = await fetch('/api/auth/webauthn/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(authResp),
-      })
-      if (verifyRes.ok) {
-        router.push('/admin')
-      } else {
-        const e = await verifyRes.json()
-        setError(e.error || 'Falha na autenticação biométrica')
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : ''
-      if (message.includes('cancelled') || message.includes('AbortError') || message.includes('NotAllowedError')) {
-        setError('Autenticação cancelada pelo usuário')
-      } else {
-        setError(`Erro na biometria: ${message || 'Tente novamente'}`)
-        console.error('WebAuthn error:', err)
-      }
     } finally {
       setLoading(false)
     }
@@ -159,20 +106,8 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Biometric login button - only shows after client-side check */}
-          {webauthnSupported && (
-            <button
-              type="button"
-              onClick={handleBiometricLogin}
-              disabled={loading}
-              className="w-full mt-3 py-3 border border-gray-600 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-white/5 transition-colors disabled:opacity-50"
-              style={{ color: 'var(--color-text-secondary)' }}
-            >
-              🔐 Entrar com Face ID / Biometria
-            </button>
-          )}
         </div>
+
 
         <p className="text-center text-xs text-text-muted mt-6">
           © 2026 LoanPro • Sistema de Gestão de Empréstimos
