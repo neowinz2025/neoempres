@@ -514,6 +514,35 @@ export default function ConfiguracoesPage() {
             <p className="text-xs text-slate-500 ml-1">
               Obtenha suas credenciais no painel: <a href="https://painel.w-api.app/" target="_blank" className="text-blue-500 underline">Acessar Painel W-API</a>
             </p>
+
+            {/* Chatbot Config Info */}
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mt-4">
+              <h4 className="text-xs font-bold text-green-800 uppercase tracking-wider mb-2 flex items-center gap-2">
+                🤖 Configurar Robô de Respostas (Chatbot)
+              </h4>
+              <p className="text-xs text-green-700 leading-relaxed mb-3">
+                Para ativar o bot que responde a chave PIX automaticamente, você deve configurar o <strong>Webhook de Recebimento</strong> no painel do W-API:
+              </p>
+              <div className="flex items-center gap-2 bg-white border border-green-100 p-2 rounded-lg group">
+                <code className="text-[10px] text-green-600 flex-1 break-all">
+                  {typeof window !== 'undefined' ? `${window.location.origin}/api/whatsapp/webhook` : 'https://seu-dominio.com/api/whatsapp/webhook'}
+                </code>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    const url = typeof window !== 'undefined' ? `${window.location.origin}/api/whatsapp/webhook` : ''
+                    navigator.clipboard.writeText(url)
+                    showToast('URL copiada!', 'success')
+                  }}
+                  className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition-colors font-bold"
+                >
+                  COPIAR
+                </button>
+              </div>
+              <p className="text-[10px] text-green-600 mt-2 font-medium">
+                ⚠️ Copie o endereço acima e cole no campo <strong>"Url do webhook de recebimento"</strong> no painel W-API.
+              </p>
+            </div>
           </div>
         </div>
 

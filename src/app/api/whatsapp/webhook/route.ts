@@ -1,101 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendWhatsApp } from '@/lib/notifications/whatsapp'
 
-/**
- * Webhook para receber eventos da UaZapi / Evolution API / MegaAPI.
- * O provedor vai bater (POST) nessa URL sempre que algo acontecer 
- * (nova mensagem recebida, mudança de status de conexão, mensagem lida, etc).
- */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const payload = await request.json()
+    console.log('[WhatsApp Webhook] Received:', JSON.stringify(payload))
 
-    console.log('[WhatsApp Webhook Recebido]:', JSON.stringify(body, null, 2))
+    // Note: W-API payload structure can vary, but usually has message.body and message.from
+    // or data.body and data.from for 'received_message' type
+    const messageData = payload.data || payload.message || payload
+    const body = (messageData.body || messageData.text || '').toString().toLowerCase()
+    const from = messageData.from || messageData.sender || messageData.phone
 
-    // =========================================================================
-    // EXEMPLO DE TRATAMENTO 1: Eventos de Conexão (CONNECTION_UPDATE)
-    // =========================================================================
-    if (body.event === 'CONNECTION_UPDATE' || body.event === 'connection.update') {
-      const state = body.data?.state || body.state
-      console.log(`[Status do WhatsApp alterado para]: ${state}`)
-      
-      // Aqui poderíamos salvar em prisma.config para atualizar o painel
+    if (!body || !from) {
+      return NextResponse.json({ processed: false, reason: 'No message body or sender found' })
     }
 
-    // Z-API OnReceive Event (Mensagem Recebida)
-    if (body.phone || body.message || body.text) {
-      
-      // Ignora eventos que nós mesmos enviamos (fromMe)
-      const fromMe = body.fromMe || body.key?.fromMe || body.message?.key?.fromMe
-      if (!fromMe) {
-        const telefoneRemetente = body.phone || body.key?.remoteJid?.split('@')[0]
-        
-        // Extrai o texto da mensagem (Z-API pode enviar como string em message, ou text.message, ou conversation)
-        let textoMsg = ''
-        if (typeof body.text?.message === 'string') textoMsg = body.text.message
-        else if (typeof body.message === 'string') textoMsg = body.message
-        else if (typeof body.message?.conversation === 'string') textoMsg = body.message.conversation
-        else if (typeof body.message?.text === 'string') textoMsg = body.message.text
-        else if (typeof body.message?.extendedTextMessage?.text === 'string') textoMsg = body.message.extendedTextMessage.text
+    // Keyword detection
+    const keywords = ['pix', 'chave', 'pagamento', 'pagar', 'pago']
+    const matches = keywords.some(k => body.includes(k))
 
-        textoMsg = textoMsg.toLowerCase()
-        console.log(`[Z-API Nova Mensagem de ${telefoneRemetente}]: ${textoMsg}`)
-
-        // Se o cliente pedir PIX ou boleto
-        if (textoMsg.includes('pix') || textoMsg.includes('pagar') || textoMsg.includes('boleto')) {
-          
-          // Busca cliente pelo telefone
-          const phoneSearch = telefoneRemetente.replace(/^55/, '') // Tira o 55 principal
-          
-          const cliente = await prisma.cliente.findFirst({
-            where: { telefone: { contains: phoneSearch } },
-            include: {
-              emprestimos: {
-                where: { status: 'ATIVO' },
-                include: {
-                  parcelas: {
-                    where: { status: { in: ['PENDENTE', 'ATRASADO'] } },
-                    orderBy: { vencimento: 'asc' },
-                    take: 1
-                  }
-                }
-              }
-            }
-          })
-
-          if (cliente) {
-             const primeiraParcela = cliente.emprestimos
-                .flatMap(e => e.parcelas)
-                .sort((a, b) => a.vencimento.getTime() - b.vencimento.getTime())[0]
-
-             if (primeiraParcela) {
-                // Monta a Chave PIX (Nesse caso o sistema tem um método gerador, mas como base vamos só mandar a instrução ou a chave Pix)
-                // Vamos mandar um aviso dinâmico:
-                const configs = await prisma.config.findMany({ where: { key: { in: ['CHAVEPIX_CHAVE', 'CHAVEPIX_NOME'] }}})
-                const pChave = configs.find(c => c.key === 'CHAVEPIX_CHAVE')?.value
-                const pNome = configs.find(c => c.key === 'CHAVEPIX_NOME')?.value
-
-                if (pChave) {
-                  const replyText = `🤖 *Assistente NeoEmpres*\n\nOlá *${cliente.nome}*!\nVi que você deseja pagar a parcela de vencimento ${primeiraParcela.vencimento.toLocaleDateString('pt-BR')} (R$ ${primeiraParcela.valor.toFixed(2)}).\n\n💳 *Chave PIX:* ${pChave}\n👤 *Recebedor:* ${pNome || 'NeoEmpres'}\n\nAssim que fizer a transferência, nosso sistema dará a baixa no seu contrato.`
-                  
-                  import('@/lib/notifications/whatsapp').then(mod => {
-                     mod.sendWhatsApp(telefoneRemetente, replyText).catch(e => console.error('[Bot]', e))
-                  }).catch(() => {})
-                }
-             } else {
-                 const replyText = `🤖 *Assistente NeoEmpres*\n\nOlá *${cliente.nome}*!\nVerifiquei aqui e você não possui nenhuma parcela pendente no momento. Está tudo em dia! 🎉`
-                 import('@/lib/notifications/whatsapp').then(mod => {
-                     mod.sendWhatsApp(telefoneRemetente, replyText)
-                 }).catch(() => {})
-             }
-          }
+    if (matches) {
+      // Fetch PIX configs
+      const configsDB = await prisma.config.findMany({
+        where: {
+          key: { in: ['PIX_PROVIDER', 'CHAVEPIX_CHAVE', 'CHAVEPIX_NOME', 'ATLASDAO_WALLET_ADDRESS', 'ATLASDAO_API_KEY'] }
         }
+      })
+
+      const configs: Record<string, string> = {}
+      configsDB.forEach(c => { configs[c.key] = c.value })
+
+      const provider = configs['PIX_PROVIDER'] || 'atlasdao'
+      let pixInfo = ''
+
+      if (provider === 'atlasdao') {
+        pixInfo = `💠 *Informações para PIX (AtlasDAO):*\n\n*Carteira:* ${configs['ATLASDAO_WALLET_ADDRESS'] || 'Não configurada'}`
+      } else if (provider === 'bitbridge') {
+        pixInfo = `💠 *Informações para PIX (BitBridge):*\n\nUtilize o link de pagamento enviado na sua fatura para gerar o QR Code dinâmico.`
+      } else if (provider === 'chavepix') {
+        pixInfo = `💠 *Chave PIX:* ${configs['CHAVEPIX_CHAVE'] || 'Não configurada'}\n*Nome:* ${configs['CHAVEPIX_NOME'] || 'Não configurado'}`
+      }
+
+      if (pixInfo) {
+        const responseMessage = `Olá! 🤖 Identificamos que você solicitou informações de pagamento.\n\n${pixInfo}\n\nApós realizar o pagamento, por favor envie o comprovante por aqui.`
+        
+        await sendWhatsApp(from, responseMessage)
+        return NextResponse.json({ processed: true, action: 'Replied with PIX info' })
       }
     }
 
-    return NextResponse.json({ received: true, status: 'success' })
-  } catch (error) {
-    console.error('[Webhook Error]: Falha ao processar Webhook', error)
+    return NextResponse.json({ processed: false, reason: 'No keyword match' })
+  } catch (error: any) {
+    console.error('[WhatsApp Webhook Error]:', error.message)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
