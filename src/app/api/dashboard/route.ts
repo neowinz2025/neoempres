@@ -60,7 +60,7 @@ export async function GET() {
 
     // ✅ valorAtrasado: apenas parcelas com status ATRASADO (cron já as marcou)
     // Parcelas PENDENTE ainda não vencidas NÃO entram aqui.
-    const valorAtrasadoStat = byStatus['ATRASADO']?.valor ?? 0
+    const valorAtrasadoStat = (byStatus['ATRASADO']?.valor ?? 0) - (byStatus['ATRASADO']?.valorPago ?? 0)
     const totalAtrasadas = byStatus['ATRASADO']?.count ?? 0
 
     // Parcelas parcialmente pagas também têm saldo em risco

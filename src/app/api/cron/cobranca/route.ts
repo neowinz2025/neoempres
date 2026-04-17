@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
     // Auto-update overdue parcelas status
     await prisma.parcela.updateMany({
       where: {
-        status: 'PENDENTE',
+        status: { in: ['PENDENTE', 'PARCIAL'] },
         vencimento: { lt: now },
       },
       data: { status: 'ATRASADO' },
