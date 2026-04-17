@@ -46,10 +46,10 @@ export async function POST(request: NextRequest) {
     console.log(`[WhatsApp Webhook] Keyword matches: ${matches}`)
 
     if (matches) {
-      // Fetch PIX configs
+      // Fetch configs including BASE_URL
       const configsDB = await prisma.config.findMany({
         where: {
-          key: { in: ['PIX_PROVIDER', 'CHAVEPIX_CHAVE', 'CHAVEPIX_NOME', 'ATLASDAO_WALLET_ADDRESS', 'ATLASDAO_API_KEY'] }
+          key: { in: ['PIX_PROVIDER', 'CHAVEPIX_CHAVE', 'CHAVEPIX_NOME', 'ATLASDAO_WALLET_ADDRESS', 'ATLASDAO_API_KEY', 'BASE_URL'] }
         }
       })
 
@@ -57,6 +57,23 @@ export async function POST(request: NextRequest) {
       configsDB.forEach(c => { configs[c.key] = c.value })
 
       const provider = configs['PIX_PROVIDER'] || 'atlasdao'
+      const baseUrl = configs['BASE_URL'] || ''
+
+      // Attempt to find client to provide portal link
+      let portalLink = ''
+      const phoneDigits = from.replace(/\D/g, '')
+      const lastDigits = phoneDigits.slice(-8) // Match last 8 digits for robustness
+      
+      const cliente = await prisma.cliente.findFirst({
+        where: {
+          telefone: { contains: lastDigits }
+        }
+      })
+
+      if (cliente && baseUrl) {
+        portalLink = `\n\n🔗 *Seu Portal do Cliente:*\n${baseUrl}/cliente/${cliente.token}`
+      }
+
       let pixInfo = ''
 
       if (provider === 'atlasdao') {
@@ -68,7 +85,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (pixInfo) {
-        const responseMessage = `Olá! 🤖 Identificamos que você solicitou informações de pagamento.\n\n${pixInfo}\n\nApós realizar o pagamento, por favor envie o comprovante por aqui.`
+        const responseMessage = `Olá${cliente ? ' ' + cliente.nome : ''}! 🤖 Identificamos que você solicitou informações de pagamento.\n\n${pixInfo}${portalLink}\n\nApós realizar o pagamento, por favor envie o comprovante por aqui.`
         
         console.log(`[WhatsApp Webhook] Attempting reply to ${from}...`)
         const ok = await sendWhatsApp(from, responseMessage)

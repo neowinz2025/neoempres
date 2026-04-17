@@ -258,6 +258,33 @@ export default function ConfiguracoesPage() {
           </div>
         </div>
 
+        {/* URL DO SISTEMA */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center border border-blue-100">
+              <span className="text-xl">🌐</span>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight">URL do Sistema</h2>
+              <p className="text-sm text-slate-500">Endereço público do sistema para gerar links nos envios de WhatsApp</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">URL Base (ex: https://meu-sistema.vercel.app)</label>
+              <input 
+                type="url" 
+                value={configs['BASE_URL'] || ''} 
+                onChange={(e) => handleChange('BASE_URL', e.target.value)} 
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:border-[#10b981] outline-none" 
+                placeholder="https://..." 
+              />
+              <p className="text-xs text-slate-500 mt-1.5">⚠️ Importante para que os links do Portal do Cliente funcionem corretamente.</p>
+            </div>
+          </div>
+        </div>
+
         {/* PIX */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-6">

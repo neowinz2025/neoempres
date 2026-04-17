@@ -18,6 +18,14 @@ export async function GET(request: NextRequest) {
   const atrasadosList: { cliente: string; numero: number; valor: number; dias: number }[] = []
 
   try {
+    // Get configuration
+    const configsDB = await prisma.config.findMany({
+      where: { key: { in: ['BASE_URL'] } }
+    })
+    const configs: Record<string, string> = {}
+    configsDB.forEach(c => { configs[c.key] = c.value })
+    const baseUrl = configs['BASE_URL'] || ''
+
     // Get all pending/overdue installments with client info
     const parcelas = await prisma.parcela.findMany({
       where: { status: { in: ['PENDENTE', 'ATRASADO'] } },
@@ -39,17 +47,20 @@ export async function GET(request: NextRequest) {
         // 1 day before
         tipo = 'LEMBRETE'
         mensagem = `Olá ${cliente.nome}! 👋\n\nLembrete: sua parcela ${parcela.numero} no valor de ${formatCurrency(parcela.valor)} vence amanhã.\n\nEvite juros, pague em dia!`
+        if (baseUrl) mensagem += `\n\nAcesse seu portal: ${baseUrl}/cliente/${cliente.token}`
         results.reminders++
       } else if (diasDiff === 0) {
         // Due date
         tipo = 'COBRANCA'
         mensagem = `Olá ${cliente.nome}! 📅\n\nSua parcela ${parcela.numero} no valor de ${formatCurrency(parcela.valor)} vence hoje!\n\nRealize o pagamento para evitar multa e juros.`
+        if (baseUrl) mensagem += `\n\nAcesse seu portal: ${baseUrl}/cliente/${cliente.token}`
         results.charges++
       } else if (diasDiff === -3) {
         // 3 days late
         const { valorTotal } = calcLateFees(parcela.valorOriginal, vencimento, parcela.emprestimo.multaPercent, parcela.emprestimo.jurosDiario)
         tipo = 'URGENTE'
         mensagem = `⚠️ ${cliente.nome}, sua parcela ${parcela.numero} está 3 dias atrasada.\n\nValor atualizado: ${formatCurrency(valorTotal)}\n\nRegularize para evitar impacto no seu score.`
+        if (baseUrl) mensagem += `\n\nAcesse seu portal: ${baseUrl}/cliente/${cliente.token}`
         results.urgents++
 
         // Update status to ATRASADO
@@ -62,6 +73,7 @@ export async function GET(request: NextRequest) {
         const { valorTotal } = calcLateFees(parcela.valorOriginal, vencimento, parcela.emprestimo.multaPercent, parcela.emprestimo.jurosDiario)
         tipo = 'FINAL'
         mensagem = `🚨 ${cliente.nome}, sua parcela ${parcela.numero} está 7 dias atrasada!\n\nValor atualizado: ${formatCurrency(valorTotal)}\n\nÚltimo aviso antes de ações de cobrança.`
+        if (baseUrl) mensagem += `\n\nAcesse seu portal: ${baseUrl}/cliente/${cliente.token}`
         results.finals++
       }
 
